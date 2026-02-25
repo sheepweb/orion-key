@@ -17,7 +17,7 @@ import { toast } from "sonner"
 import { useLocale, useAuth, useCart } from "@/lib/context"
 import { productApi, orderApi, paymentApi, withMockFallback } from "@/services/api"
 import { mockProductDetail, mockPaymentChannels, mockCreateOrder } from "@/lib/mock-data"
-import { cn, validateEmail, generateIdempotencyKey } from "@/lib/utils"
+import { cn, validateEmail, generateIdempotencyKey, getCurrencySymbol } from "@/lib/utils"
 import { PaymentSelector } from "@/components/shared/payment-selector"
 import type { ProductDetail, ProductSpec, PaymentChannelItem } from "@/types"
 
@@ -84,19 +84,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   // -- Derived -----------------------------------------------
   const currentPrice = useMemo(() => {
-    if (!selectedSpec) return 0
-    if (product?.wholesale_enabled && product.wholesale_rules?.length) {
-      const sorted = [...product.wholesale_rules].sort(
-        (a, b) => b.min_quantity - a.min_quantity
-      )
-      for (const rule of sorted) {
-        if (quantity >= rule.min_quantity) return rule.unit_price
-      }
-    }
-    return selectedSpec.price
-  }, [selectedSpec, quantity, product])
+    if (selectedSpec) return selectedSpec.price
+    return product?.base_price ?? 0
+  }, [selectedSpec, product])
 
   const totalPrice = currentPrice * quantity
+
+  const currentStock = selectedSpec?.stock_available ?? product?.stock_available ?? 0
+  const isOutOfStock = currentStock === 0
 
   const handleEmailChange = (value: string) => {
     setEmail(value)
@@ -107,7 +102,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  const deliveryType = "auto"
+  const deliveryType = product?.delivery_type === "MANUAL" ? "manual" : "auto"
 
   // Scroll to top button
   useEffect(() => {
@@ -170,14 +165,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       toast.error(t("product.paymentMethod"))
       return
     }
-    if (!selectedSpec) return
+    if (product.specs.length > 0 && !selectedSpec) return
+    if (isOutOfStock) {
+      toast.error(t("product.outOfStock"))
+      return
+    }
 
     setSubmitting(true)
     try {
       const result = await withMockFallback(
         () => orderApi.create({
           product_id: product.id,
-          spec_id: selectedSpec.id,
+          spec_id: selectedSpec?.id ?? null,
           quantity,
           email,
           payment_method: selectedPayment,
@@ -186,7 +185,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         () => mockCreateOrder(email, selectedPayment)
       )
       toast.success(t("checkout.processingOrder"))
-      router.push(`/pay/${result.payment.order_id}?method=${selectedPayment}`)
+      const qr = result.payment.qrcode_url || result.payment.payment_url || ""
+      const payUrl = `/pay/${result.payment.order_id}?method=${selectedPayment}${qr ? `&qr=${encodeURIComponent(qr)}` : ""}`
+      router.push(payUrl)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("common.error")
       toast.error(message)
@@ -196,11 +197,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const handleAddToCart = async () => {
-    if (!selectedSpec) return
+    if (product.specs.length > 0 && !selectedSpec) return
+    if (isOutOfStock) {
+      toast.error(t("product.outOfStock"))
+      return
+    }
     try {
       await addItem({
         product_id: product.id,
-        spec_id: selectedSpec.id,
+        spec_id: selectedSpec?.id ?? null,
         quantity,
       })
       toast.success(t("product.addToCart"))
@@ -259,8 +264,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               {/* Price row + delivery status */}
               <div className="flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm text-muted-foreground">{"\u00A5"}</span>
+                  <div className="flex items-baseline gap-0.5">
+                    <span className="text-lg font-extrabold text-primary">{getCurrencySymbol(product.currency)}</span>
                     <span className="text-2xl font-extrabold text-primary">
                       {currentPrice.toFixed(2)}
                     </span>
@@ -271,23 +276,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <div className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1",
                   deliveryType === "auto"
-                    ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
-                    : "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20"
+                    ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20"
+                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
                 )}>
                   <span className={cn(
                     "relative inline-flex h-2 w-2 rounded-full",
-                    deliveryType === "auto" ? "bg-green-500" : "bg-yellow-500"
+                    deliveryType === "auto" ? "bg-emerald-500" : "bg-amber-400"
                   )}>
-                    <span className={cn(
-                      "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
-                      deliveryType === "auto" ? "bg-green-400" : "bg-yellow-400"
-                    )} />
+                    {deliveryType === "auto" && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    )}
                   </span>
                   <span className={cn(
                     "text-xs font-semibold",
                     deliveryType === "auto"
-                      ? "text-green-700 dark:text-green-300"
-                      : "text-yellow-700 dark:text-yellow-300"
+                      ? "text-emerald-700 dark:text-emerald-300"
+                      : "text-amber-600 dark:text-amber-300"
                   )}>
                     {deliveryType === "auto" ? t("product.deliveryAuto") : t("product.deliveryManual")}
                   </span>
@@ -307,32 +311,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   </span>
                 )}
               </div>
-
-              {/* Wholesale tier hints */}
-              {product.wholesale_enabled && product.wholesale_rules && product.wholesale_rules.length > 0 && (
-                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    {product.wholesale_rules.map((rule, idx) => {
-                      const isActive = quantity >= rule.min_quantity
-                      return (
-                        <span
-                          key={idx}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded px-2 py-1 font-medium transition-colors",
-                            isActive
-                              ? "bg-amber-500 text-white"
-                              : "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300"
-                          )}
-                        >
-                          {t("product.tierHint").replace("{qty}", String(rule.min_quantity))}
-                          {": "}
-                          {"\u00A5"}{rule.unit_price.toFixed(2)}/{t("product.perPiece")}
-                        </span>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Spec selection */}
               {product.specs && product.specs.length > 1 && (
@@ -387,20 +365,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   <input
                     type="number"
                     min={1}
-                    max={selectedSpec?.stock_available || 999}
+                    max={currentStock || 1}
                     value={quantity}
                     onChange={(e) => {
                       const v = parseInt(e.target.value) || 1
-                      setQuantity(Math.min(v, selectedSpec?.stock_available || 999))
+                      setQuantity(Math.min(v, currentStock || 1))
                     }}
                     className="h-9 w-16 border-x border-border bg-background text-center text-sm text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   <button
                     onClick={() =>
-                      setQuantity(Math.min(quantity + 1, selectedSpec?.stock_available || 999))
+                      setQuantity(Math.min(quantity + 1, currentStock || 1))
                     }
                     className="inline-flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:bg-accent"
-                    disabled={quantity >= (selectedSpec?.stock_available || 999)}
+                    disabled={quantity >= currentStock}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -448,8 +426,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               {/* Total */}
               <div className="flex items-baseline justify-between border-t border-border pt-4">
                 <span className="text-sm text-muted-foreground">{t("product.totalPrice")}</span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-sm text-primary">{"\u00A5"}</span>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-lg font-bold text-primary">{getCurrencySymbol(product.currency)}</span>
                   <span className="text-2xl font-bold text-primary">
                     {totalPrice.toFixed(2)}
                   </span>
@@ -460,7 +438,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex gap-3">
                 <button
                   onClick={handleBuyNow}
-                  disabled={submitting}
+                  disabled={submitting || isOutOfStock}
                   className="scheme-glow inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:pointer-events-none disabled:opacity-50"
                 >
                   {submitting ? (
@@ -468,11 +446,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   ) : (
                     <Zap className="h-4 w-4" />
                   )}
-                  {t("product.buyNow")}
+                  {isOutOfStock ? t("product.outOfStock") : t("product.buyNow")}
                 </button>
                 <button
                   onClick={handleAddToCart}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                  disabled={isOutOfStock}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4" />
                   {t("product.addToCart")}

@@ -8,6 +8,8 @@ import { toast } from "sonner"
 import { adminOrderApi, adminCardKeyApi, withMockFallback } from "@/services/api"
 import { mockAdminOrderList, mockOrderCardKeys } from "@/lib/mock-data"
 import { OrderStatusBadge } from "@/components/shared/order-status-badge"
+import { PaymentIcon, getPaymentLabel } from "@/components/shared/payment-icon"
+import { Modal } from "@/components/ui/modal"
 import type { AdminOrderItem, OrderCardKey } from "@/types"
 
 const ITEMS_PER_PAGE = 10
@@ -112,6 +114,7 @@ export default function AdminOrdersPage() {
         <button
           type="button"
           className="flex items-center gap-2 rounded-lg border border-input bg-transparent px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+          onClick={() => toast.info("导出功能开发中")}
         >
           <Download className="h-4 w-4" />
           导出
@@ -181,6 +184,8 @@ export default function AdminOrdersPage() {
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("admin.orderNo")}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">商品</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">数量</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("admin.user")}</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("admin.amount")}</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("admin.orderSource")}</th>
@@ -193,7 +198,7 @@ export default function AdminOrdersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12">
+                  <td colSpan={10} className="py-12">
                     <div className="flex items-center justify-center">
                       <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     </div>
@@ -201,7 +206,7 @@ export default function AdminOrdersPage() {
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-sm text-muted-foreground">{t("admin.noOrderData")}</td>
+                  <td colSpan={10} className="py-8 text-center text-sm text-muted-foreground">{t("admin.noOrderData")}</td>
                 </tr>
               ) : (
                 orders.map((order) => (
@@ -215,6 +220,17 @@ export default function AdminOrdersPage() {
                           <span className="rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500">{t("admin.riskFlagged")}</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-foreground">
+                        {order.items?.[0]?.product_title || "-"}
+                        {(order.items?.length ?? 0) > 1 && (
+                          <span className="ml-1 text-xs text-muted-foreground">等{order.items.length}件</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-foreground">
+                      {order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5">
@@ -235,7 +251,12 @@ export default function AdminOrdersPage() {
                         {order.order_type === "CART" ? t("admin.cartOrder") : t("admin.directOrder")}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{order.payment_method}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-foreground">
+                        <PaymentIcon method={order.payment_method} className="h-4 w-4" />
+                        {getPaymentLabel(order.payment_method)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <OrderStatusBadge status={order.status} />
                     </td>
@@ -321,11 +342,14 @@ export default function AdminOrdersPage() {
       )}
 
       {/* Detail Modal */}
-      {showDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowDetail(null)}>
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showDetail !== null} onClose={() => setShowDetail(null)} className="max-w-lg">
+        {showDetail && (
+          <>
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">{t("admin.orderDetail")}</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{t("admin.orderDetail")}</h2>
+                <p className="font-mono text-xs text-muted-foreground">{showDetail.id}</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowDetail(null)}
@@ -334,71 +358,49 @@ export default function AdminOrdersPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex flex-col gap-6 p-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-5 p-6">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.orderNo")}</span>
-                  <span className="font-mono text-sm font-medium text-foreground">{showDetail.id}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.statusLabel")}</span>
-                  <OrderStatusBadge status={showDetail.status} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.amount")}</span>
-                  <span className="text-sm font-medium text-foreground">¥{showDetail.actual_amount.toFixed(2)}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.paymentMethod")}</span>
-                  <span className="text-sm text-foreground">{showDetail.payment_method}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.time")}</span>
-                  <span className="text-sm text-foreground">{new Date(showDetail.created_at).toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.orderSource")}</span>
-                  <span className="text-sm text-foreground">
-                    {showDetail.order_type === "CART" ? t("admin.cartOrder") : t("admin.directOrder")}
+                  <span className="text-xs text-muted-foreground">商品名称</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {showDetail.items.length > 0
+                      ? showDetail.items[0].product_title + (showDetail.items.length > 1 ? ` 等${showDetail.items.length}件` : "")
+                      : "-"}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.user")}</span>
-                  <span className="text-sm text-foreground">{showDetail.username || t("admin.guest")}</span>
+                  <span className="text-xs text-muted-foreground">支付金额</span>
+                  <span className="text-sm font-medium text-foreground">¥{showDetail.actual_amount.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("admin.emailLabel")}</span>
+                  <span className="text-xs text-muted-foreground">联系邮箱</span>
                   <span className="text-sm text-foreground">{showDetail.email}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">支付方式</span>
+                  <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+                    <PaymentIcon method={showDetail.payment_method} className="h-4 w-4" />
+                    {getPaymentLabel(showDetail.payment_method)}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">创建时间</span>
+                  <span className="text-sm text-foreground">{new Date(showDetail.created_at).toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">支付时间</span>
+                  <span className="text-sm text-foreground">{showDetail.paid_at ? new Date(showDetail.paid_at).toLocaleString() : "-"}</span>
                 </div>
               </div>
 
-              {/* Order items */}
-              {showDetail.items.length > 0 && (
-                <div className="rounded-lg border border-border p-4">
-                  <p className="text-sm font-medium text-foreground mb-2">{t("admin.orderItems")}</p>
-                  <div className="flex flex-col gap-2">
-                    {showDetail.items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                        <div>
-                          <span className="text-sm text-foreground">{item.product_title}</span>
-                          {item.spec_name && <span className="text-xs text-muted-foreground ml-2">({item.spec_name})</span>}
-                        </div>
-                        <span className="text-sm text-foreground">×{item.quantity} = ¥{item.subtotal.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Card keys for delivered orders */}
+              {/* 已发卡密 */}
               {showDetail.status === "DELIVERED" && detailCardKeys.length > 0 && (
-                <div className="rounded-lg border border-border bg-muted/30 p-4">
-                  <p className="text-sm font-medium text-foreground mb-2">{t("admin.cardKeysDetail")}</p>
-                  <div className="flex flex-col gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">已发卡密</p>
+                  <div className="flex flex-col gap-1.5">
                     {detailCardKeys.map((ck) => (
-                      <div key={ck.card_key_id} className="rounded bg-background p-3">
-                        <code className="text-xs text-foreground">{ck.content}</code>
-                        <span className="ml-2 text-xs text-muted-foreground">({ck.product_title})</span>
+                      <div key={ck.card_key_id} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                        <code className="text-sm text-foreground">{ck.content}</code>
                       </div>
                     ))}
                   </div>
@@ -423,9 +425,9 @@ export default function AdminOrdersPage() {
                 {t("common.close")}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

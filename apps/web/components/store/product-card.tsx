@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Zap, Package, AlertTriangle } from "lucide-react"
 import type { ProductCard as ProductCardType } from "@/types"
 import { useLocale } from "@/lib/context"
-import { cn } from "@/lib/utils"
+import { cn, getCurrencySymbol } from "@/lib/utils"
 
 interface ProductCardProps {
   product: ProductCardType
@@ -56,10 +56,12 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Tags row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-              <Zap className="h-3 w-3" />
-              {t("home.instantDelivery")}
-            </span>
+            {product.delivery_type !== "MANUAL" && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <Zap className="h-3 w-3" />
+                {t("home.instantDelivery")}
+              </span>
+            )}
             {lowStock && (
               <span className="inline-flex items-center gap-0.5 rounded bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-900/40 dark:text-red-300">
                 <AlertTriangle className="h-2.5 w-2.5" />
@@ -83,7 +85,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="mt-auto flex items-center justify-between border-t border-border/40 pt-2">
           <div className="flex items-baseline gap-0.5">
             <span className="text-sm font-extrabold text-primary">
-              {"\u00A5"}
+              {getCurrencySymbol(product.currency)}
             </span>
             <span className="text-xl font-extrabold tracking-tight text-primary">
               {product.base_price.toFixed(2)}

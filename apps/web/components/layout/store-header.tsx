@@ -99,20 +99,36 @@ export function StoreHeader() {
 
         {/* Desktop Nav -- absolute center */}
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                pathname === link.href
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isCart = link.href === "/cart"
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "relative rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                  pathname === link.href
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                {isCart ? (
+                  <span className="flex items-center gap-1.5">
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    {link.label}
+                    {cartItemCount > 0 && (
+                      <span className="relative flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground shadow-sm">
+                        {cartItemCount > 99 ? "99+" : cartItemCount}
+                        <span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-20" />
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  link.label
+                )}
+              </Link>
+            )
+          })}
         </nav>
 
         {/* Right Actions -- flex-1 to match logo side */}

@@ -21,6 +21,7 @@ import type {
   DashboardStats,
   SalesTrend,
   CardKeyStockSummary,
+  CardKeyListItem,
   CardImportBatch,
   OrderCardKey,
   AdminUserItem,
@@ -31,6 +32,7 @@ import type {
   WholesaleRule,
   CaptchaResult,
   AuthResult,
+  CurrencyItem,
 } from "@/types"
 
 // ============================================================
@@ -116,11 +118,11 @@ async function request<T>(
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`
-  } else {
-    const sessionToken = getSessionToken()
-    if (sessionToken) {
-      headers["X-Session-Token"] = sessionToken
-    }
+  }
+  // 始终发送 session token（购物车等功能需要：JWT 无效/过期时作为身份回退）
+  const sessionToken = getSessionToken()
+  if (sessionToken) {
+    headers["X-Session-Token"] = sessionToken
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -274,7 +276,7 @@ export const orderApi = {
   createFromCart: (data: CreateCartOrderRequest) =>
     request<CreateOrderResult>("/orders/from-cart", { method: "POST", body: JSON.stringify(data) }),
   getStatus: (orderId: string) =>
-    request<{ order_id: string; status: OrderStatus; expires_at: string }>(`/orders/${orderId}/status`),
+    request<{ order_id: string; status: OrderStatus; expires_at: string; payment_url?: string }>(`/orders/${orderId}/status`),
   refreshStatus: (orderId: string) =>
     request<{ status: OrderStatus }>(`/orders/${orderId}/refresh`, { method: "POST" }),
   query: (data: { order_ids?: string[]; emails?: string[] }) =>
@@ -301,6 +303,15 @@ export const siteApi = {
 export const paymentApi = {
   getChannels: () =>
     request<PaymentChannelItem[]>("/payment-channels"),
+}
+
+// ============================================================
+// Currencies (public)
+// ============================================================
+
+export const currencyApi = {
+  getList: () =>
+    request<CurrencyItem[]>("/currencies"),
 }
 
 // ============================================================
@@ -383,6 +394,10 @@ export const adminCategoryApi = {
 // ============================================================
 
 export const adminCardKeyApi = {
+  getList: (params: { product_id: string; spec_id?: string | null; page?: number; page_size?: number }) => {
+    const qs = buildQuery(params)
+    return request<PaginatedData<CardKeyListItem>>(`/admin/card-keys/list?${qs}`)
+  },
   getStock: (params?: { product_id?: string; spec_id?: string }) => {
     const qs = buildQuery(params ?? {})
     return request<CardKeyStockSummary[]>(`/admin/card-keys/stock?${qs}`)
@@ -395,6 +410,10 @@ export const adminCardKeyApi = {
   },
   invalidate: (id: string) =>
     request<null>(`/admin/card-keys/${id}/invalidate`, { method: "POST" }),
+  batchInvalidate: (params: { product_id: string; spec_id?: string | null }) => {
+    const qs = buildQuery(params)
+    return request<{ invalidated_count: number }>(`/admin/card-keys/batch-invalidate?${qs}`, { method: "POST" })
+  },
   getByOrder: (orderId: string) =>
     request<OrderCardKey[]>(`/admin/card-keys/by-order/${orderId}`),
 }
@@ -437,9 +456,9 @@ export const adminUserApi = {
 export const adminPaymentApi = {
   getList: () =>
     request<PaymentChannelItem[]>("/admin/payment-channels"),
-  create: (data: { channel_code: string; channel_name: string; config_data?: Record<string, unknown>; is_enabled?: boolean; sort_order?: number }) =>
+  create: (data: { channel_code: string; channel_name: string; provider_type: string; config_data?: Record<string, unknown>; is_enabled?: boolean; sort_order?: number }) =>
     request<null>("/admin/payment-channels", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ channel_name: string; config_data: Record<string, unknown>; is_enabled: boolean; sort_order: number }>) =>
+  update: (id: string, data: Partial<{ channel_name: string; provider_type: string; config_data: Record<string, unknown>; is_enabled: boolean; sort_order: number }>) =>
     request<null>(`/admin/payment-channels/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<null>(`/admin/payment-channels/${id}`, { method: "DELETE" }),

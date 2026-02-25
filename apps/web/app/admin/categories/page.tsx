@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { adminCategoryApi, withMockFallback } from "@/services/api"
 import { mockCategories } from "@/lib/mock-data"
 import { useLocale } from "@/lib/context"
+import { Modal } from "@/components/ui/modal"
 import type { Category } from "@/types"
 
 export default function AdminCategoriesPage() {
@@ -170,9 +171,7 @@ export default function AdminCategoriesPage() {
       </div>
 
       {/* Add/Edit Category Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={handleCloseModal}>
-          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showModal} onClose={handleCloseModal} className="max-w-md">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 {editId ? t("admin.editCategory") : t("admin.addCategory")}
@@ -224,14 +223,10 @@ export default function AdminCategoriesPage() {
                 {saving ? t("admin.saving") : t("admin.save")}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowDeleteConfirm(null)}>
-          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showDeleteConfirm !== null} onClose={() => setShowDeleteConfirm(null)} className="max-w-md">
             <div className="flex flex-col gap-4 p-6">
               <div className="flex items-start gap-3">
                 <div className="rounded-full bg-destructive/10 p-2">
@@ -255,15 +250,13 @@ export default function AdminCategoriesPage() {
                 <button
                   type="button"
                   className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
-                  onClick={() => handleDelete(showDeleteConfirm)}
+                  onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
                 >
                   {t("admin.delete")}
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   )
 }

@@ -19,7 +19,7 @@ public class SiteConfigServiceImpl implements SiteConfigService {
             "site_name", "site_slogan", "site_description", "logo_url", "favicon_url",
             "announcement_enabled", "announcement", "popup_enabled", "popup_content",
             "contact_email", "contact_telegram", "points_enabled", "points_rate",
-            "maintenance_enabled", "maintenance_message", "footer_text", "custom_css"
+            "maintenance_enabled", "maintenance_message", "footer_text", "github_url", "custom_css"
     );
 
     @Override

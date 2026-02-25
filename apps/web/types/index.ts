@@ -86,9 +86,11 @@ export interface ProductCard {
   description?: string
   cover_url?: string
   base_price: number
+  currency?: string
   category_id: string
   stock_available: number
   has_specs: boolean
+  delivery_type?: string
   sales_count?: number
   is_enabled?: boolean
   sort_order?: number
@@ -168,6 +170,7 @@ export interface OrderDetail extends OrderBrief {
 export interface PaymentCreateResult {
   order_id: string
   payment_url: string
+  qrcode_url?: string
   expires_at: string
 }
 
@@ -189,13 +192,50 @@ export interface DeliverResult {
 }
 
 // ============================================================
+// Currency
+// ============================================================
+
+export interface CurrencyItem {
+  code: string
+  name: string
+  symbol: string
+}
+
+// ============================================================
 // Payment
 // ============================================================
+
+export type ProviderType = 'epay' | 'native_alipay' | 'native_wxpay' | 'usdt'
+
+export interface PaymentChannelConfig {
+  // 易支付
+  pid?: string
+  key?: string
+  api_url?: string
+  notify_url?: string
+  return_url?: string
+  // 原生支付宝
+  appid?: string
+  private_key?: string
+  alipay_public_key?: string
+  gateway_url?: string
+  // 原生微信
+  mchid?: string
+  api_v3_key?: string
+  serial_no?: string
+  private_key_path?: string
+  // USDT
+  wallet_address?: string
+  rate_api_url?: string
+  [key: string]: string | undefined
+}
 
 export interface PaymentChannelItem {
   id: string
   channel_code: string
   channel_name: string
+  provider_type: ProviderType
+  config_data?: PaymentChannelConfig | null
   is_enabled: boolean
   sort_order: number
   created_at: string
@@ -222,6 +262,7 @@ export interface SiteConfig {
   maintenance_enabled: boolean
   maintenance_message?: string
   footer_text?: string
+  github_url?: string
   custom_css?: string
 }
 
@@ -312,6 +353,15 @@ export interface CardKeyStockSummary {
   sold: number
   locked: number
   invalid: number
+}
+
+export interface CardKeyListItem {
+  id: string
+  content: string
+  status: 'AVAILABLE' | 'LOCKED' | 'SOLD' | 'INVALID'
+  order_id: string | null
+  created_at: string
+  sold_at: string | null
 }
 
 export interface CardImportBatch {

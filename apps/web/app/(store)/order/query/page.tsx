@@ -10,6 +10,7 @@ import { mockQueryOrders, mockDeliver } from "@/lib/mock-data"
 import { OrderStatusBadge } from "@/components/shared/order-status-badge"
 import type { OrderBrief, DeliverResult } from "@/types"
 import { cn } from "@/lib/utils"
+import { Modal } from "@/components/ui/modal"
 
 interface RecentQuery {
   value: string
@@ -338,36 +339,30 @@ export default function OrderQueryPage() {
       })}
 
       {/* Delete Confirmation Dialog */}
-      {deleteConfirm && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-            onClick={() => setDeleteConfirm(null)}
-          />
-          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-background p-6 shadow-lg">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-foreground">{t("order.deleteConfirmTitle")}</h3>
+      <Modal open={deleteConfirm !== null} onClose={() => setDeleteConfirm(null)} className="max-w-md">
+            <div className="p-6">
+              <div className="mb-2">
+                <h3 className="text-lg font-semibold text-foreground">{t("order.deleteConfirmTitle")}</h3>
+              </div>
+              <p className="mb-6 text-sm text-muted-foreground">
+                {t("order.deleteConfirmMessage")}
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                >
+                  {t("order.cancel")}
+                </button>
+                <button
+                  onClick={() => deleteConfirm && confirmRemoveQuery(deleteConfirm)}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                >
+                  {t("order.delete")}
+                </button>
+              </div>
             </div>
-            <p className="mb-6 text-sm text-muted-foreground">
-              {t("order.deleteConfirmMessage")}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-              >
-                {t("order.cancel")}
-              </button>
-              <button
-                onClick={() => confirmRemoveQuery(deleteConfirm)}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
-              >
-                {t("order.delete")}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      </Modal>
     </div>
   )
 }

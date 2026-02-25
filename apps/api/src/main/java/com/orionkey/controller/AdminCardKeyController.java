@@ -16,6 +16,15 @@ public class AdminCardKeyController {
 
     private final AdminCardKeyService adminCardKeyService;
 
+    @GetMapping("/list")
+    public ApiResponse<?> listCardKeys(
+            @RequestParam("product_id") UUID productId,
+            @RequestParam(value = "spec_id", required = false) UUID specId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(value = "page_size", defaultValue = "20") int pageSize) {
+        return ApiResponse.success(adminCardKeyService.listCardKeys(productId, specId, page, pageSize));
+    }
+
     @GetMapping("/stock")
     public ApiResponse<?> getStockSummary(
             @RequestParam(value = "product_id", required = false) UUID productId,
@@ -40,6 +49,14 @@ public class AdminCardKeyController {
     public ApiResponse<Void> invalidateCardKey(@PathVariable UUID id) {
         adminCardKeyService.invalidateCardKey(id);
         return ApiResponse.success();
+    }
+
+    @PostMapping("/batch-invalidate")
+    public ApiResponse<?> batchInvalidateCardKeys(
+            @RequestParam("product_id") UUID productId,
+            @RequestParam(value = "spec_id", required = false) UUID specId) {
+        int count = adminCardKeyService.batchInvalidateCardKeys(productId, specId);
+        return ApiResponse.success(Map.of("invalidated_count", count));
     }
 
     @GetMapping("/by-order/{orderId}")

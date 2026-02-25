@@ -151,6 +151,13 @@ public class AdminCardKeyServiceImpl implements AdminCardKeyService {
     }
 
     @Override
+    @Transactional
+    public int batchInvalidateCardKeys(UUID productId, UUID specId) {
+        return cardKeyRepository.updateStatusByProductIdAndSpecId(
+                productId, specId, CardKeyStatus.AVAILABLE, CardKeyStatus.INVALID);
+    }
+
+    @Override
     public List<?> getCardKeysByOrder(UUID orderId) {
         List<CardKey> keys = cardKeyRepository.findByOrderId(orderId);
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
@@ -169,6 +176,23 @@ public class AdminCardKeyServiceImpl implements AdminCardKeyService {
             map.put("status", k.getStatus().name());
             return map;
         }).toList();
+    }
+
+    @Override
+    public PageResult<?> listCardKeys(UUID productId, UUID specId, int page, int pageSize) {
+        var pageable = PageRequest.of(page - 1, pageSize);
+        var keyPage = cardKeyRepository.findByProductIdAndOptionalSpecId(productId, specId, pageable);
+        var list = keyPage.getContent().stream().map(k -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", k.getId());
+            map.put("content", k.getContent());
+            map.put("status", k.getStatus().name());
+            map.put("order_id", k.getOrderId());
+            map.put("created_at", k.getCreatedAt());
+            map.put("sold_at", k.getSoldAt());
+            return map;
+        }).toList();
+        return PageResult.of(keyPage, list);
     }
 
     private Map<String, Object> buildStockEntry(UUID productId, String productTitle, UUID specId, String specName) {

@@ -1,18 +1,33 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Plus, Search, Edit, Trash2, Upload, X, AlertCircle, ChevronDown, EyeOff, Eye, KeyRound } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { Plus, Search, Edit, Trash2, Upload, X, AlertCircle, ChevronDown, EyeOff, Eye, KeyRound, Loader2, ImagePlus } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn, getCurrencySymbol } from "@/lib/utils"
+import { Modal } from "@/components/ui/modal"
 import { useLocale } from "@/lib/context"
-import { adminProductApi, adminCategoryApi, adminCardKeyApi, withMockFallback } from "@/services/api"
+import { adminProductApi, adminCategoryApi, adminCardKeyApi, currencyApi, withMockFallback } from "@/services/api"
 import { mockCategories } from "@/lib/mock-data"
-import type { ProductDetail, Category, ProductSpec } from "@/types"
+import type { ProductDetail, Category, ProductSpec, CurrencyItem } from "@/types"
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"]
+const ALLOWED_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,.bmp,.svg"
+
+function validateImageFile(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return "不支持的图片格式，仅支持 JPG/PNG/GIF/WebP/BMP/SVG"
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    return "图片大小不能超过 10MB"
+  }
+  return null
+}
 
 export default function AdminProductsPage() {
   const { t } = useLocale()
   const [products, setProducts] = useState<ProductDetail[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [currencies, setCurrencies] = useState<CurrencyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("")
@@ -27,6 +42,10 @@ export default function AdminProductsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [showImportModal, setShowImportModal] = useState<ProductDetail | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [detailUploading, setDetailUploading] = useState(false)
+  const [specsEnabled, setSpecsEnabled] = useState(false)
+  const detailTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -35,13 +54,15 @@ export default function AdminProductsPage() {
     detail_md: "",
     category_id: "",
     base_price: "",
+    currency: "CNY",
     cover_url: "",
     low_stock_threshold: "10",
     wholesale_enabled: false,
     is_enabled: true,
     sort_order: "",
+    delivery_type: "AUTO",
   })
-  const [formSpecs, setFormSpecs] = useState<{ id?: string; name: string; price: string; stock_available: string }[]>([])
+  const [formSpecs, setFormSpecs] = useState<{ id?: string; name: string; price: string }[]>([])
 
   // Import modal state
   const [importSpecId, setImportSpecId] = useState("")
@@ -85,18 +106,30 @@ export default function AdminProductsPage() {
   }, [page, categoryFilter, statusFilter, search])
 
   useEffect(() => {
-    async function fetchCategories() {
+    async function fetchInitData() {
       try {
-        const cats = await withMockFallback(
-          () => adminCategoryApi.getList(),
-          () => [...mockCategories]
-        )
+        const [cats, curs] = await Promise.all([
+          withMockFallback(
+            () => adminCategoryApi.getList(),
+            () => [...mockCategories]
+          ),
+          withMockFallback(
+            () => currencyApi.getList(),
+            () => [
+              { code: "CNY", name: "人民币", symbol: "¥" },
+              { code: "USD", name: "美元", symbol: "$" },
+              { code: "USDT", name: "USDT (TRC-20)", symbol: "₮" },
+            ] as CurrencyItem[]
+          ),
+        ])
         setCategories(cats)
+        setCurrencies(curs)
       } catch {
         setCategories([])
+        setCurrencies([])
       }
     }
-    fetchCategories()
+    fetchInitData()
   }, [])
 
   useEffect(() => { fetchProducts() }, [fetchProducts])
@@ -111,18 +144,21 @@ export default function AdminProductsPage() {
       detail_md: product.detail_md || "",
       category_id: product.category_id,
       base_price: String(product.base_price),
+      currency: product.currency || "CNY",
       cover_url: product.cover_url || "",
       low_stock_threshold: String(product.low_stock_threshold ?? 10),
-      wholesale_enabled: product.wholesale_enabled,
+      wholesale_enabled: false,
       is_enabled: product.is_enabled !== false,
       sort_order: String(product.sort_order ?? ""),
+      delivery_type: product.delivery_type || "AUTO",
     })
-    setFormSpecs(product.specs.map(s => ({
+    const specs = product.specs.map(s => ({
       id: s.id,
       name: s.name,
       price: String(s.price),
-      stock_available: String(s.stock_available),
-    })))
+    }))
+    setFormSpecs(specs)
+    setSpecsEnabled(specs.length > 0)
     setShowModal(true)
   }
 
@@ -158,32 +194,85 @@ export default function AdminProductsPage() {
       toast.error("请输入商品名称")
       return
     }
+    if (specsEnabled) {
+      for (const spec of formSpecs) {
+        if (!spec.name.trim()) { toast.error("规格名称不能为空"); return }
+        if (!spec.price || parseFloat(spec.price) <= 0) { toast.error(`规格「${spec.name || "未命名"}」价格无效`); return }
+      }
+    }
     setSaving(true)
     try {
+      // Auto-sync base_price = min(spec prices) when specs enabled
+      let basePrice = parseFloat(formData.base_price) || 0
+      if (specsEnabled && formSpecs.length > 0) {
+        const specPrices = formSpecs.map(s => parseFloat(s.price)).filter(p => p > 0)
+        if (specPrices.length > 0) {
+          basePrice = Math.min(...specPrices)
+        }
+      }
+
       const payload = {
         title: formData.title,
         description: formData.description || undefined,
         detail_md: formData.detail_md || undefined,
         category_id: formData.category_id,
-        base_price: parseFloat(formData.base_price) || 0,
+        base_price: basePrice,
+        currency: formData.currency,
         cover_url: formData.cover_url || undefined,
         low_stock_threshold: parseInt(formData.low_stock_threshold) || 10,
-        wholesale_enabled: formData.wholesale_enabled,
+        wholesale_enabled: false,
         is_enabled: formData.is_enabled,
         sort_order: parseInt(formData.sort_order) || undefined,
+        delivery_type: formData.delivery_type,
       }
 
+      let productId: string
       if (editingProduct) {
         await withMockFallback(
           () => adminProductApi.update(editingProduct.id, payload),
           () => null
         )
+        productId = editingProduct.id
       } else {
-        await withMockFallback(
+        const created = await withMockFallback(
           () => adminProductApi.create(payload),
-          () => ({} as ProductDetail)
+          () => ({ id: "mock-id" } as ProductDetail)
         )
+        productId = created.id
       }
+
+      // Sync specs
+      if (productId && productId !== "mock-id") {
+        const existingSpecs = editingProduct?.specs || []
+        const existingIds = new Set(existingSpecs.map(s => s.id))
+        const keepIds = new Set(formSpecs.filter(s => s.id).map(s => s.id!))
+
+        if (specsEnabled) {
+          // Delete removed specs
+          for (const oldSpec of existingSpecs) {
+            if (!keepIds.has(oldSpec.id)) {
+              try { await adminProductApi.deleteSpec(productId, oldSpec.id) } catch { /* ignore */ }
+            }
+          }
+          // Update existing + add new specs
+          for (const spec of formSpecs) {
+            if (spec.id && existingIds.has(spec.id)) {
+              const old = existingSpecs.find(s => s.id === spec.id)
+              if (old && (old.name !== spec.name || String(old.price) !== spec.price)) {
+                try { await adminProductApi.updateSpec(productId, spec.id, { name: spec.name, price: parseFloat(spec.price) }) } catch { /* ignore */ }
+              }
+            } else {
+              try { await adminProductApi.addSpec(productId, { name: spec.name, price: parseFloat(spec.price) }) } catch { /* ignore */ }
+            }
+          }
+        } else {
+          // Specs disabled — delete all existing
+          for (const oldSpec of existingSpecs) {
+            try { await adminProductApi.deleteSpec(productId, oldSpec.id) } catch { /* ignore */ }
+          }
+        }
+      }
+
       toast.success("保存成功")
       handleCloseModal()
       await fetchProducts()
@@ -197,8 +286,9 @@ export default function AdminProductsPage() {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingProduct(null)
-    setFormData({ title: "", description: "", detail_md: "", category_id: "", base_price: "", cover_url: "", low_stock_threshold: "10", wholesale_enabled: false, is_enabled: true, sort_order: "" })
+    setFormData({ title: "", description: "", detail_md: "", category_id: "", base_price: "", currency: "CNY", cover_url: "", low_stock_threshold: "10", wholesale_enabled: false, is_enabled: true, sort_order: "", delivery_type: "AUTO" })
     setFormSpecs([])
+    setSpecsEnabled(false)
   }
 
   const handleImport = async () => {
@@ -223,6 +313,7 @@ export default function AdminProductsPage() {
       setShowImportModal(null)
       setImportContent("")
       setImportSpecId("")
+      await fetchProducts()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "导入失败")
     } finally {
@@ -333,7 +424,7 @@ export default function AdminProductsPage() {
                         {getCategoryName(product.category_id)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-foreground">¥{product.base_price}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{getCurrencySymbol(product.currency)}{product.base_price}</td>
                     <td className="px-4 py-3">
                       <span className={cn("font-medium", product.stock_available === 0 ? "text-red-500" : product.stock_available <= (product.low_stock_threshold ?? 10) ? "text-amber-500" : "text-foreground")}>
                         {product.stock_available}
@@ -385,9 +476,7 @@ export default function AdminProductsPage() {
       )}
 
       {/* Add/Edit Product Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={handleCloseModal}>
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showModal} onClose={handleCloseModal} className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 {editingProduct ? t("admin.editProduct") : t("admin.addProduct")}
@@ -397,14 +486,17 @@ export default function AdminProductsPage() {
               </button>
             </div>
             <div className="flex flex-col gap-5 p-6">
+              {/* 商品名称 */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-foreground">{t("admin.productNameReq")}</label>
                 <input type="text" className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="请输入商品名称" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
               </div>
+              {/* 商品简介 */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-foreground">{t("admin.productBrief")}</label>
                 <input type="text" className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="简短描述商品特点" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               </div>
+              {/* 分类 + 货币类型 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-foreground">{t("admin.categoryReq")}</label>
@@ -414,51 +506,230 @@ export default function AdminProductsPage() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">货币类型</label>
+                  <select
+                    className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  >
+                    {currencies.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} - {c.name}</option>
+                    ))}
+                    {currencies.length === 0 && <option value="CNY">CNY - 人民币</option>}
+                  </select>
+                </div>
+              </div>
+              {/* 基础售价 + 封面图片 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-foreground">{t("admin.basePriceReq")}</label>
                   <input type="number" step="0.01" className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="0.00" value={formData.base_price} onChange={(e) => setFormData({ ...formData, base_price: e.target.value })} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-foreground">{t("admin.coverUrl")}</label>
-                  <input type="text" className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="https://..." value={formData.cover_url} onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })} />
+                  <div className="flex gap-2">
+                    <input type="text" className="h-10 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="https://..." value={formData.cover_url} onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })} />
+                    <label className={cn("flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground hover:bg-accent transition-colors", uploading && "pointer-events-none opacity-50")}>
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      上传
+                      <input
+                        type="file"
+                        accept={ALLOWED_IMAGE_ACCEPT}
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          const err = validateImageFile(file)
+                          if (err) { toast.error(err); e.target.value = ""; return }
+                          setUploading(true)
+                          try {
+                            const result = await adminProductApi.uploadImage(file)
+                            setFormData(prev => ({ ...prev, cover_url: result.url }))
+                            toast.success("上传成功")
+                          } catch (err: unknown) {
+                            toast.error(err instanceof Error ? err.message : "上传失败")
+                          } finally {
+                            setUploading(false)
+                            e.target.value = ""
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">建议 1:1 正方形图片，支持 JPG/PNG/GIF/WebP，用于商品卡和详情页展示</p>
                 </div>
+              </div>
+              {/* 低库存预警 + 上架状态 */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-foreground">{t("admin.lowStockAlert")}</label>
                   <input type="number" className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="10" value={formData.low_stock_threshold} onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })} />
                 </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">{t("admin.detailMd")}</label>
-                <textarea className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="使用 Markdown 编写商品详细说明" value={formData.detail_md} onChange={(e) => setFormData({ ...formData, detail_md: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground">{t("admin.enableWholesale")}</label>
-                  <button type="button" className={cn("relative h-6 w-11 rounded-full transition-colors", formData.wholesale_enabled ? "bg-primary" : "bg-muted")} onClick={() => setFormData({ ...formData, wholesale_enabled: !formData.wholesale_enabled })}>
-                    <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", formData.wholesale_enabled && "translate-x-5")} />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-foreground">{t("admin.listingStatus")}</label>
-                  <button type="button" className={cn("relative h-6 w-11 rounded-full transition-colors", formData.is_enabled ? "bg-primary" : "bg-muted")} onClick={() => setFormData({ ...formData, is_enabled: !formData.is_enabled })}>
-                    <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", formData.is_enabled && "translate-x-5")} />
+                  <div className="flex h-10 items-center gap-2">
+                    <button type="button" className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors", formData.is_enabled ? "bg-primary" : "bg-muted")} onClick={() => setFormData({ ...formData, is_enabled: !formData.is_enabled })}>
+                      <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", formData.is_enabled && "translate-x-5")} />
+                    </button>
+                    <span className="text-sm text-muted-foreground">{formData.is_enabled ? "已上架" : "已下架"}</span>
+                  </div>
+                </div>
+              </div>
+              {/* 发货方式 */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">发货方式</label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      formData.delivery_type === "AUTO"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-input text-foreground hover:border-primary/30"
+                    )}
+                    onClick={() => setFormData({ ...formData, delivery_type: "AUTO" })}
+                  >
+                    自动发货
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      formData.delivery_type === "MANUAL"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-input text-foreground hover:border-primary/30"
+                    )}
+                    onClick={() => setFormData({ ...formData, delivery_type: "MANUAL" })}
+                  >
+                    手动发货
                   </button>
                 </div>
+              </div>
+              {/* 商品规格 */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">商品规格</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">启用多规格</span>
+                    <button type="button" className={cn("relative h-6 w-11 rounded-full transition-colors", specsEnabled ? "bg-primary" : "bg-muted")} onClick={() => {
+                      if (specsEnabled) { setSpecsEnabled(false) } else { setSpecsEnabled(true); if (formSpecs.length === 0) setFormSpecs([{ name: "", price: "" }]) }
+                    }}>
+                      <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", specsEnabled && "translate-x-5")} />
+                    </button>
+                  </div>
+                </div>
+                {specsEnabled && (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-col gap-2">
+                    {formSpecs.map((spec, idx) => (
+                      <div key={spec.id || idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          className="h-9 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          placeholder="规格名称（如：1个月、6个月）"
+                          value={spec.name}
+                          onChange={(e) => {
+                            const next = [...formSpecs]
+                            next[idx] = { ...next[idx], name: e.target.value }
+                            setFormSpecs(next)
+                          }}
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="h-9 w-32 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          placeholder="价格"
+                          value={spec.price}
+                          onChange={(e) => {
+                            const next = [...formSpecs]
+                            next[idx] = { ...next[idx], price: e.target.value }
+                            setFormSpecs(next)
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          onClick={() => setFormSpecs(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      onClick={() => setFormSpecs(prev => [...prev, { name: "", price: "" }])}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      添加规格
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* 详细说明（放在最底部） */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">{t("admin.detailMd")}</label>
+                  <label className={cn("flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors", detailUploading && "pointer-events-none opacity-50")}>
+                    {detailUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                    插入图片
+                    <input
+                      type="file"
+                      accept={ALLOWED_IMAGE_ACCEPT}
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const err = validateImageFile(file)
+                        if (err) { toast.error(err); e.target.value = ""; return }
+                        setDetailUploading(true)
+                        try {
+                          const result = await adminProductApi.uploadImage(file)
+                          const textarea = detailTextareaRef.current
+                          const mdImage = `![${file.name}](${result.url})`
+                          if (textarea) {
+                            const start = textarea.selectionStart
+                            const end = textarea.selectionEnd
+                            const text = formData.detail_md
+                            const before = text.substring(0, start)
+                            const after = text.substring(end)
+                            const newText = before + (before.length > 0 && !before.endsWith("\n") ? "\n" : "") + mdImage + "\n" + after
+                            setFormData(prev => ({ ...prev, detail_md: newText }))
+                            requestAnimationFrame(() => {
+                              const newPos = before.length + (before.length > 0 && !before.endsWith("\n") ? 1 : 0) + mdImage.length + 1
+                              textarea.selectionStart = textarea.selectionEnd = newPos
+                              textarea.focus()
+                            })
+                          } else {
+                            setFormData(prev => ({ ...prev, detail_md: prev.detail_md + (prev.detail_md ? "\n" : "") + mdImage + "\n" }))
+                          }
+                          toast.success("图片已插入")
+                        } catch (err: unknown) {
+                          toast.error(err instanceof Error ? err.message : "上传失败")
+                        } finally {
+                          setDetailUploading(false)
+                          e.target.value = ""
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <textarea
+                  ref={detailTextareaRef}
+                  className="min-h-32 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="使用 Markdown 编写商品详细说明&#10;支持通过右上角按钮上传图片，自动插入 Markdown 图片链接"
+                  value={formData.detail_md}
+                  onChange={(e) => setFormData({ ...formData, detail_md: e.target.value })}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
               <button type="button" className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors" onClick={handleCloseModal}>{t("admin.cancel")}</button>
               <button type="button" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50" onClick={handleSave} disabled={saving}>{saving ? t("admin.saving") : t("admin.save")}</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation */}
-      {showDeleteConfirm !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowDeleteConfirm(null)}>
-          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showDeleteConfirm !== null} onClose={() => setShowDeleteConfirm(null)} className="max-w-md">
             <div className="flex flex-col gap-4 p-6">
               <div className="flex items-start gap-3">
                 <div className="rounded-full bg-destructive/10 p-2"><AlertCircle className="h-5 w-5 text-destructive" /></div>
@@ -469,25 +740,21 @@ export default function AdminProductsPage() {
               </div>
               <div className="flex justify-end gap-3">
                 <button type="button" className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors" onClick={() => setShowDeleteConfirm(null)}>{t("admin.cancel")}</button>
-                <button type="button" className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors" onClick={() => handleDelete(showDeleteConfirm)}>{t("admin.delete")}</button>
+                <button type="button" className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}>{t("admin.delete")}</button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Import Card Keys Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowImportModal(null)}>
-          <div className="w-full max-w-2xl rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showImportModal !== null} onClose={() => setShowImportModal(null)} className="max-w-2xl">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">{t("admin.importKeys")} — {showImportModal.title}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("admin.importKeys")} — {showImportModal?.title}</h2>
               <button type="button" onClick={() => setShowImportModal(null)} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex flex-col gap-5 p-6">
-              {showImportModal.specs.length > 0 && (
+              {showImportModal && showImportModal.specs.length > 0 && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-foreground">{t("admin.selectSpec")}</label>
                   <select className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" value={importSpecId} onChange={(e) => setImportSpecId(e.target.value)}>
@@ -507,9 +774,7 @@ export default function AdminProductsPage() {
               <button type="button" className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors" onClick={() => setShowImportModal(null)}>{t("admin.cancel")}</button>
               <button type="button" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50" onClick={handleImport} disabled={importing}>{importing ? t("admin.saving") : t("admin.import")}</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   )
 }

@@ -14,17 +14,13 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // 开发模式: 将 /api/* 和 /uploads/* 代理到 Spring Boot 后端
+  // 开发模式: 将 /api/* 代理到 Spring Boot 后端（含上传文件 /api/uploads/*）
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8082"
     return [
       {
         source: "/api/:path*",
         destination: `${backendUrl}/api/:path*`,
-      },
-      {
-        source: "/uploads/:path*",
-        destination: `${backendUrl}/uploads/:path*`,
       },
     ]
   },

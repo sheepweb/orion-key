@@ -25,7 +25,13 @@ public class CartServiceImpl implements CartService {
     private final ProductSpecRepository productSpecRepository;
 
     @Override
+    @Transactional
     public Map<String, Object> getCart(UUID userId, String sessionToken) {
+        // 登录用户且有游客 sessionToken → 合并游客购物车到用户账户
+        if (userId != null && sessionToken != null) {
+            mergeGuestCart(userId, sessionToken);
+        }
+
         List<CartItem> items;
         if (userId != null) {
             items = cartItemRepository.findByUserId(userId);
@@ -114,6 +120,31 @@ public class CartServiceImpl implements CartService {
         if (userId != null && userId.equals(item.getUserId())) return;
         if (sessionToken != null && sessionToken.equals(item.getSessionToken())) return;
         throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作此购物车项");
+    }
+
+    /**
+     * 将游客购物车（sessionToken）合并到登录用户（userId）。
+     * 相同商品+规格的项合并数量，其余直接迁移归属。
+     */
+    private void mergeGuestCart(UUID userId, String sessionToken) {
+        List<CartItem> guestItems = cartItemRepository.findBySessionToken(sessionToken);
+        if (guestItems.isEmpty()) return;
+
+        for (CartItem guestItem : guestItems) {
+            Optional<CartItem> existing = cartItemRepository.findByUserIdAndProductIdAndSpecId(
+                    userId, guestItem.getProductId(), guestItem.getSpecId());
+            if (existing.isPresent()) {
+                // 已存在同商品+规格 → 合并数量
+                existing.get().setQuantity(existing.get().getQuantity() + guestItem.getQuantity());
+                cartItemRepository.save(existing.get());
+                cartItemRepository.delete(guestItem);
+            } else {
+                // 不存在 → 迁移归属
+                guestItem.setUserId(userId);
+                guestItem.setSessionToken(null);
+                cartItemRepository.save(guestItem);
+            }
+        }
     }
 
     private Map<String, Object> toCartItemMap(CartItem item) {

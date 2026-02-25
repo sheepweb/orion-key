@@ -9,34 +9,73 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  QrCode,
   Copy,
   ExternalLink,
   HelpCircle,
+  Loader2,
 } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
-import { useLocale } from "@/lib/context"
+import { useLocale, useCart } from "@/lib/context"
 import { orderApi, withMockFallback } from "@/services/api"
 import type { OrderStatus } from "@/types"
 import { cn } from "@/lib/utils"
-import { PaymentIcon } from "@/components/shared/payment-icon"
+import { PaymentIcon, getPaymentLabel, getPaymentBrandColor, getPaymentScanHint } from "@/components/shared/payment-icon"
 
 const PAYMENT_TIMEOUT = 15 * 60 // 15 minutes in seconds
 const POLL_INTERVAL = 3000 // 3 seconds
 const MANUAL_REFRESH_COOLDOWN = 10 // 10 seconds
+
+/** 从 expires_at 时间戳计算剩余秒数 */
+function calcTimeLeft(expiresAt: string): number {
+  const remaining = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
+  return Math.max(0, remaining)
+}
 
 export default function PaymentPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = use(params)
   const { t } = useLocale()
   const searchParams = useSearchParams()
 
+  const { refreshCart } = useCart()
+
   const [status, setStatus] = useState<OrderStatus>("PENDING")
   const [timeLeft, setTimeLeft] = useState(PAYMENT_TIMEOUT)
   const [refreshCooldown, setRefreshCooldown] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [qrcodeUrl, setQrcodeUrl] = useState<string>("")
 
   const paymentMethod = searchParams.get("method") || "alipay"
-  const paymentMethodName = paymentMethod === "alipay" ? t("payment.alipay") : paymentMethod === "wechat" ? t("payment.wechat") : paymentMethod
+  const paymentMethodName = getPaymentLabel(paymentMethod, t)
+  const scanHint = getPaymentScanHint(paymentMethod, t)
+  const brandColor = getPaymentBrandColor(paymentMethod)
+
+  // 初始化：获取订单状态 + QR code + 真实倒计时
+  useEffect(() => {
+    const qrFromParam = searchParams.get("qr")
+    if (qrFromParam) {
+      setQrcodeUrl(decodeURIComponent(qrFromParam))
+    }
+
+    // 无论是否有 qr 参数，都需要从 API 获取 expires_at 计算倒计时
+    async function fetchOrderInfo() {
+      try {
+        const result = await orderApi.getStatus(orderId)
+        if (result.expires_at) {
+          setTimeLeft(calcTimeLeft(result.expires_at))
+        }
+        if (!qrFromParam && result.payment_url) {
+          setQrcodeUrl(result.payment_url)
+        }
+        if (result.status !== "PENDING") {
+          setStatus(result.status)
+        }
+      } catch {
+        // silent — 首次下单可能刚创建，保持默认倒计时
+      }
+    }
+    fetchOrderInfo()
+  }, [orderId, searchParams])
 
   // Countdown timer
   useEffect(() => {
@@ -62,15 +101,22 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
           () => orderApi.getStatus(orderId),
           () => ({ order_id: orderId, status: "PENDING" as const, expires_at: "" })
         )
+        // 同步服务端倒计时，防止客户端时间漂移
+        if (result.expires_at) {
+          setTimeLeft(calcTimeLeft(result.expires_at))
+        }
         if (result.status !== "PENDING") {
           setStatus(result.status)
+          if (result.status === "PAID" || result.status === "DELIVERED") {
+            refreshCart()
+          }
         }
       } catch {
         // silent — continue polling
       }
     }, POLL_INTERVAL)
     return () => clearInterval(poll)
-  }, [status, orderId])
+  }, [status, orderId, refreshCart])
 
   // Manual refresh cooldown
   useEffect(() => {
@@ -91,6 +137,9 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
       )
       if (result.status !== "PENDING") {
         setStatus(result.status)
+        if (result.status === "PAID" || result.status === "DELIVERED") {
+          refreshCart()
+        }
       }
     } catch {
       // silent
@@ -148,60 +197,80 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   // Pending state
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-6 py-8">
-      <h1 className="text-xl font-bold text-foreground">{t("payment.waiting")}</h1>
+      {/* 外层卡片框 — 标题/倒计时/品牌卡/订单信息统一收纳 */}
+      <div className="flex w-full flex-col items-center gap-5 rounded-xl border border-border bg-card p-6 shadow-sm">
 
-      {/* Timer */}
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Clock className="h-4 w-4" />
-        <span className="text-sm">{t("payment.remaining")}</span>
-        <span
-          className={cn(
-            "font-mono text-lg font-bold",
-            timeLeft < 120 ? "text-destructive" : "text-foreground"
-          )}
-        >
-          {formatTime(timeLeft)}
-        </span>
-      </div>
-
-      {/* QR Code Area */}
-      <div className="flex w-full flex-col items-center gap-4 rounded-lg border border-border bg-card p-6">
-        <p className="text-sm text-muted-foreground">{t("payment.scanToPay")}</p>
-
-        {/* Mock QR Code */}
-        <div className="flex h-48 w-48 items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted">
-          <QrCode className="h-20 w-20 text-muted-foreground/40" />
+        {/* 标题 + 倒计时 */}
+        <h1 className="text-xl font-bold text-foreground">{t("payment.waiting")}</h1>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className="h-4 w-4" />
+          <span className="text-sm">{t("payment.remaining")}</span>
+          <span
+            className={cn(
+              "font-mono text-lg font-bold",
+              timeLeft < 120 ? "text-destructive" : "text-foreground"
+            )}
+          >
+            {formatTime(timeLeft)}
+          </span>
         </div>
 
-        {/* Detecting Status */}
-        <p className="animate-pulse text-xs text-primary">
-          {t("payment.detecting")}
-        </p>
-
-        {/* Order Info */}
-        <div className="flex w-full flex-col gap-2 pt-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{t("payment.method")}</span>
-            <span className="flex items-center gap-2 font-medium text-foreground">
-              <PaymentIcon method={paymentMethod} className="h-5 w-5" />
+        {/* 品牌色背景卡片 */}
+        <div
+          className="flex w-72 flex-col items-center gap-4 rounded-2xl px-6 pb-8 pt-6"
+          style={{ backgroundColor: brandColor || "#374151" }}
+        >
+          {/* 品牌标题：Logo + 支付方式名称（白色） */}
+          <div className="flex items-center gap-2.5">
+            <PaymentIcon method={paymentMethod} className="h-10 w-10" variant="plain" />
+            <span className="text-xl font-bold text-white">
               {paymentMethodName}
             </span>
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{t("payment.orderNo")}</span>
-            <span className="flex items-center gap-1 font-mono text-xs text-foreground">
-              {orderId.length > 20 ? `${orderId.slice(0, 8)}...${orderId.slice(-8)}` : orderId}
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(orderId)
-                  toast.success(t("order.copied"))
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            </span>
+
+          {/* 扫码指引（白色） */}
+          <p className="text-sm font-medium text-white/90">
+            {scanHint}
+          </p>
+
+          {/* QR Code 白色区域 */}
+          <div className="flex h-52 w-52 items-center justify-center rounded-xl bg-white p-3">
+            {qrcodeUrl ? (
+              <QRCodeSVG
+                value={qrcodeUrl}
+                size={184}
+                level="M"
+                includeMargin={false}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="text-xs">{t("common.loading")}</span>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* 检测状态 */}
+        <p className="animate-pulse text-sm text-primary">
+          {t("payment.detecting")}
+        </p>
+
+        {/* 订单号 */}
+        <div className="flex w-full items-center justify-between border-t border-border pt-4 text-sm">
+          <span className="text-muted-foreground">{t("payment.orderNo")}</span>
+          <span className="flex items-center gap-1 font-mono text-xs text-foreground">
+            {orderId.length > 20 ? `${orderId.slice(0, 8)}...${orderId.slice(-8)}` : orderId}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(orderId)
+                toast.success(t("order.copied"))
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </span>
         </div>
       </div>
 

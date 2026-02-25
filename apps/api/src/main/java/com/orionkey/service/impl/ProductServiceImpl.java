@@ -8,6 +8,7 @@ import com.orionkey.entity.ProductSpec;
 import com.orionkey.entity.WholesaleRule;
 import com.orionkey.exception.BusinessException;
 import com.orionkey.repository.CardKeyRepository;
+import com.orionkey.repository.OrderItemRepository;
 import com.orionkey.repository.ProductRepository;
 import com.orionkey.repository.ProductSpecRepository;
 import com.orionkey.repository.WholesaleRuleRepository;
@@ -30,6 +31,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSpecRepository productSpecRepository;
     private final WholesaleRuleRepository wholesaleRuleRepository;
     private final CardKeyRepository cardKeyRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @Override
     public PageResult<?> listPublicProducts(UUID categoryId, String keyword, int page, int pageSize) {
@@ -75,7 +77,16 @@ public class ProductServiceImpl implements ProductService {
         } else {
             productPage = productRepository.findAdminProducts(categoryId, isEnabled, pageable);
         }
-        var list = productPage.getContent().stream().map(this::toProductDetail).toList();
+        var list = productPage.getContent().stream().map(p -> {
+            Map<String, Object> detail = toProductDetail(p);
+            detail.put("is_enabled", p.isEnabled());
+            detail.put("sort_order", p.getSortOrder());
+            detail.put("low_stock_threshold", p.getLowStockThreshold());
+            detail.put("sales_count", orderItemRepository.sumQuantityByProductId(p.getId()));
+            detail.put("created_at", p.getCreatedAt());
+            detail.put("updated_at", p.getUpdatedAt());
+            return detail;
+        }).toList();
         return PageResult.of(productPage, list);
     }
 
@@ -88,6 +99,8 @@ public class ProductServiceImpl implements ProductService {
         product.setDetailMd((String) req.get("detail_md"));
         product.setCoverUrl((String) req.get("cover_url"));
         product.setBasePrice(new BigDecimal(req.get("base_price").toString()));
+        if (req.containsKey("currency")) product.setCurrency((String) req.get("currency"));
+        if (req.containsKey("delivery_type")) product.setDeliveryType((String) req.get("delivery_type"));
         product.setCategoryId(UUID.fromString((String) req.get("category_id")));
         if (req.containsKey("low_stock_threshold")) product.setLowStockThreshold(((Number) req.get("low_stock_threshold")).intValue());
         if (req.containsKey("wholesale_enabled")) product.setWholesaleEnabled((boolean) req.get("wholesale_enabled"));
@@ -108,6 +121,8 @@ public class ProductServiceImpl implements ProductService {
         if (req.containsKey("detail_md")) product.setDetailMd((String) req.get("detail_md"));
         if (req.containsKey("cover_url")) product.setCoverUrl((String) req.get("cover_url"));
         if (req.containsKey("base_price")) product.setBasePrice(new BigDecimal(req.get("base_price").toString()));
+        if (req.containsKey("currency")) product.setCurrency((String) req.get("currency"));
+        if (req.containsKey("delivery_type")) product.setDeliveryType((String) req.get("delivery_type"));
         if (req.containsKey("category_id")) product.setCategoryId(UUID.fromString((String) req.get("category_id")));
         if (req.containsKey("low_stock_threshold")) product.setLowStockThreshold(((Number) req.get("low_stock_threshold")).intValue());
         if (req.containsKey("wholesale_enabled")) product.setWholesaleEnabled((boolean) req.get("wholesale_enabled"));
@@ -216,6 +231,7 @@ public class ProductServiceImpl implements ProductService {
         map.put("description", p.getDescription());
         map.put("cover_url", p.getCoverUrl());
         map.put("base_price", p.getBasePrice());
+        map.put("currency", p.getCurrency());
         map.put("category_id", p.getCategoryId());
         List<ProductSpec> specs = productSpecRepository.findByProductIdAndIsDeletedOrderBySortOrderAsc(p.getId(), 0);
         // For products with specs, sum stock across all specs; for products without specs, count spec-null keys
@@ -224,6 +240,7 @@ public class ProductServiceImpl implements ProductService {
                 : cardKeyRepository.countByProductIdAndStatus(p.getId(), CardKeyStatus.AVAILABLE);
         map.put("stock_available", stockAvailable);
         map.put("has_specs", !specs.isEmpty());
+        map.put("delivery_type", p.getDeliveryType());
         return map;
     }
 

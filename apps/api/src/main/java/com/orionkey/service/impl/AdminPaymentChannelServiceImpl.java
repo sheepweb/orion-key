@@ -1,5 +1,8 @@
 package com.orionkey.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orionkey.constant.ErrorCode;
 import com.orionkey.entity.PaymentChannel;
 import com.orionkey.exception.BusinessException;
@@ -16,6 +19,7 @@ import java.util.*;
 public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelService {
 
     private final PaymentChannelRepository paymentChannelRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     public List<?> listChannels() {
@@ -29,8 +33,12 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
         PaymentChannel channel = new PaymentChannel();
         channel.setChannelCode((String) req.get("channel_code"));
         channel.setChannelName((String) req.get("channel_name"));
-        Object configData = req.get("config_data");
-        channel.setConfigData(configData != null ? configData.toString() : null);
+        if (req.containsKey("provider_type")) {
+            channel.setProviderType((String) req.get("provider_type"));
+        }
+        if (req.containsKey("config_data")) {
+            channel.setConfigData(serializeConfigData(req.get("config_data")));
+        }
         if (req.containsKey("is_enabled")) channel.setEnabled((boolean) req.get("is_enabled"));
         if (req.containsKey("sort_order")) channel.setSortOrder(((Number) req.get("sort_order")).intValue());
         paymentChannelRepository.save(channel);
@@ -44,8 +52,7 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "支付渠道不存在"));
         if (req.containsKey("channel_name")) channel.setChannelName((String) req.get("channel_name"));
         if (req.containsKey("config_data")) {
-            Object configData = req.get("config_data");
-            channel.setConfigData(configData != null ? configData.toString() : null);
+            channel.setConfigData(serializeConfigData(req.get("config_data")));
         }
         if (req.containsKey("is_enabled")) channel.setEnabled((boolean) req.get("is_enabled"));
         if (req.containsKey("sort_order")) channel.setSortOrder(((Number) req.get("sort_order")).intValue());
@@ -66,9 +73,30 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
         map.put("id", c.getId());
         map.put("channel_code", c.getChannelCode());
         map.put("channel_name", c.getChannelName());
+        map.put("provider_type", c.getProviderType());
+        map.put("config_data", deserializeConfigData(c.getConfigData()));
         map.put("is_enabled", c.isEnabled());
         map.put("sort_order", c.getSortOrder());
         map.put("created_at", c.getCreatedAt());
         return map;
+    }
+
+    private String serializeConfigData(Object configData) {
+        if (configData == null) return null;
+        if (configData instanceof String s) return s;
+        try {
+            return objectMapper.writeValueAsString(configData);
+        } catch (JsonProcessingException e) {
+            return configData.toString();
+        }
+    }
+
+    private Map<String, Object> deserializeConfigData(String configData) {
+        if (configData == null || configData.isBlank()) return null;
+        try {
+            return objectMapper.readValue(configData, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 }

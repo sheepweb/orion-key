@@ -2,7 +2,10 @@ package com.orionkey.repository;
 
 import com.orionkey.constant.CardKeyStatus;
 import com.orionkey.entity.CardKey;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -29,9 +32,26 @@ public interface CardKeyRepository extends JpaRepository<CardKey, UUID> {
 
     boolean existsByContentAndProductId(String content, UUID productId);
 
+    @Query("SELECT ck FROM CardKey ck WHERE ck.productId = :productId " +
+            "AND ((:specId IS NULL AND ck.specId IS NULL) OR ck.specId = :specId) " +
+            "ORDER BY ck.createdAt DESC")
+    Page<CardKey> findByProductIdAndOptionalSpecId(@Param("productId") UUID productId,
+                                                    @Param("specId") UUID specId,
+                                                    Pageable pageable);
+
     @Query("SELECT ck.status, COUNT(ck) FROM CardKey ck " +
             "WHERE ck.productId = :productId AND ((:specId IS NULL AND ck.specId IS NULL) OR ck.specId = :specId) " +
             "GROUP BY ck.status")
     List<Object[]> countByProductIdAndSpecIdGroupByStatus(@Param("productId") UUID productId,
                                                           @Param("specId") UUID specId);
+
+    @Modifying
+    @Query("UPDATE CardKey ck SET ck.status = :newStatus " +
+            "WHERE ck.productId = :productId " +
+            "AND ((:specId IS NULL AND ck.specId IS NULL) OR ck.specId = :specId) " +
+            "AND ck.status = :oldStatus")
+    int updateStatusByProductIdAndSpecId(@Param("productId") UUID productId,
+                                         @Param("specId") UUID specId,
+                                         @Param("oldStatus") CardKeyStatus oldStatus,
+                                         @Param("newStatus") CardKeyStatus newStatus);
 }

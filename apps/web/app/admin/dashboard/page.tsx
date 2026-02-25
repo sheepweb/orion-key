@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
         <div className="xl:col-span-2">
           <SalesChart trends={trends} />
         </div>
-        {stats && <LowStockAlert products={stats.low_stock_products} />}
+        <LowStockAlert products={stats?.low_stock_products ?? []} />
       </div>
 
       {/* Recent Orders */}

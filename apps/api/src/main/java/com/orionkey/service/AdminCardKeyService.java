@@ -16,5 +16,9 @@ public interface AdminCardKeyService {
 
     void invalidateCardKey(UUID id);
 
+    int batchInvalidateCardKeys(UUID productId, UUID specId);
+
     List<?> getCardKeysByOrder(UUID orderId);
+
+    PageResult<?> listCardKeys(UUID productId, UUID specId, int page, int pageSize);
 }

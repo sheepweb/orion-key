@@ -177,7 +177,7 @@ public class OrderServiceImpl implements OrderService {
         order.setActualAmount(totalAmount);
         orderRepository.save(order);
 
-        // Clear cart
+        // Clear cart after order creation to prevent duplicate orders from same cart items
         for (CartItem ci : cartItems) {
             cartItemRepository.delete(ci);
         }
@@ -199,6 +199,9 @@ public class OrderServiceImpl implements OrderService {
         result.put("order_id", order.getId());
         result.put("status", order.getStatus().name());
         result.put("expires_at", order.getExpiresAt());
+        if (order.getStatus() == OrderStatus.PENDING && order.getPaymentUrl() != null) {
+            result.put("payment_url", order.getPaymentUrl());
+        }
         return result;
     }
 

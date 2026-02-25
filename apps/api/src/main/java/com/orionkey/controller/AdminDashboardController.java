@@ -19,7 +19,7 @@ public class AdminDashboardController {
 
     @GetMapping("/sales-trend")
     public ApiResponse<?> getSalesTrend(
-            @RequestParam String period,
+            @RequestParam(defaultValue = "7d") String period,
             @RequestParam(value = "start_date", required = false) String startDate,
             @RequestParam(value = "end_date", required = false) String endDate) {
         return ApiResponse.success(dashboardService.getSalesTrend(period, startDate, endDate));

@@ -9,17 +9,18 @@ import { useAuth } from "./context"
  * Passes current path as redirect param so login page can redirect back.
  */
 export function useRequireAuth() {
-  const { user, isLoggedIn } = useAuth()
+  const { user, isLoggedIn, authLoaded } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
+    if (!authLoaded) return
     if (!isLoggedIn) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [isLoggedIn, router, pathname])
+  }, [authLoaded, isLoggedIn, router, pathname])
 
-  return user
+  return authLoaded ? user : null
 }
 
 /**
@@ -28,17 +29,18 @@ export function useRequireAuth() {
  * - Logged in but not ADMIN → redirect to /
  */
 export function useRequireAdmin() {
-  const { user, isLoggedIn } = useAuth()
+  const { user, isLoggedIn, authLoaded } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
+    if (!authLoaded) return
     if (!isLoggedIn) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
     } else if (user?.role !== "ADMIN") {
       router.replace("/")
     }
-  }, [isLoggedIn, user, router, pathname])
+  }, [authLoaded, isLoggedIn, user, router, pathname])
 
-  return user
+  return authLoaded ? user : null
 }

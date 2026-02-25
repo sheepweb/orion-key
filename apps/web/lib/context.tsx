@@ -3,8 +3,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react"
 import { type Locale, getDictionary, type TranslationKey } from "./i18n"
 import type { UserProfile, CartItem, SiteConfig } from "@/types"
-import { clearToken, clearSessionToken, cartApi, siteApi, withMockFallback } from "@/services/api"
+import { clearToken, clearSessionToken, cartApi, siteApi, currencyApi, withMockFallback } from "@/services/api"
 import { mockCartData, mockSiteConfig } from "./mock-data"
+import { initCurrencySymbols } from "./utils"
 
 // ============================================================
 // Theme
@@ -129,6 +130,7 @@ interface AuthContextValue {
   user: UserProfile | null
   setUser: (u: UserProfile | null) => void
   isLoggedIn: boolean
+  authLoaded: boolean
   logout: () => void
 }
 
@@ -136,6 +138,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   setUser: () => {},
   isLoggedIn: false,
+  authLoaded: false,
   logout: () => {},
 })
 
@@ -298,6 +301,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   // ---------- Auth ----------
   const [user, setUserState] = useState<UserProfile | null>(null)
+  const [authLoaded, setAuthLoaded] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem("userProfile")
@@ -308,6 +312,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         console.error("Failed to parse saved user profile:", e)
       }
     }
+    setAuthLoaded(true)
   }, [])
 
   const setUser = useCallback((u: UserProfile | null) => {
@@ -407,6 +412,30 @@ export function AppProviders({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [])
 
+  // ---------- Currency Symbols ----------
+  useEffect(() => {
+    let cancelled = false
+    async function fetchCurrencies() {
+      try {
+        const currencies = await withMockFallback(
+          () => currencyApi.getList(),
+          () => [
+            { code: "CNY", name: "人民币", symbol: "¥" },
+            { code: "USD", name: "美元", symbol: "$" },
+            { code: "USDT", name: "USDT (TRC-20)", symbol: "₮" },
+          ]
+        )
+        if (!cancelled) {
+          initCurrencySymbols(currencies)
+        }
+      } catch {
+        // fallback symbols are already hardcoded in getCurrencySymbol
+      }
+    }
+    fetchCurrencies()
+    return () => { cancelled = true }
+  }, [])
+
   // ---------- Search + Sort/Filter（会话状态，无需持久化）----------
   const [searchQuery, setSearchQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
@@ -420,7 +449,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
       <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>
         <LocaleContext.Provider value={{ locale, setLocale, t }}>
-          <AuthContext.Provider value={{ user, setUser, isLoggedIn, logout }}>
+          <AuthContext.Provider value={{ user, setUser, isLoggedIn, authLoaded, logout }}>
             <CartContext.Provider
               value={{
                 items: cartItems,

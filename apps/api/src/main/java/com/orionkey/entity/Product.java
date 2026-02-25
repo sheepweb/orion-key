@@ -31,8 +31,14 @@ public class Product extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal basePrice;
 
+    @Column(length = 10)
+    private String currency = "CNY";
+
     @Column(nullable = false)
     private UUID categoryId;
+
+    @Column(length = 10)
+    private String deliveryType = "AUTO";
 
     private int lowStockThreshold = 10;
 

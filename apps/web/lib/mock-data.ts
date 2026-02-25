@@ -449,9 +449,9 @@ export const mockOperationLogs: OperationLog[] = [
 // ============================================================
 
 export const mockPaymentChannels: PaymentChannelItem[] = [
-  { id: uuid(851), channel_code: "wechat", channel_name: "微信支付", is_enabled: true, sort_order: 1, created_at: "2025-01-01T00:00:00Z" },
-  { id: uuid(852), channel_code: "alipay", channel_name: "支付宝", is_enabled: true, sort_order: 2, created_at: "2025-01-01T00:00:00Z" },
-  { id: uuid(853), channel_code: "usdt_trc20", channel_name: "USDT (TRC20)", is_enabled: false, sort_order: 3, created_at: "2025-01-01T00:00:00Z" },
+  { id: uuid(851), channel_code: "wechat", channel_name: "微信支付", provider_type: "epay", config_data: null, is_enabled: true, sort_order: 1, created_at: "2025-01-01T00:00:00Z" },
+  { id: uuid(852), channel_code: "alipay", channel_name: "支付宝", provider_type: "epay", config_data: null, is_enabled: true, sort_order: 2, created_at: "2025-01-01T00:00:00Z" },
+  { id: uuid(853), channel_code: "usdt_trc20", channel_name: "USDT (TRC20)", provider_type: "usdt", config_data: null, is_enabled: false, sort_order: 3, created_at: "2025-01-01T00:00:00Z" },
 ]
 
 // ============================================================
@@ -471,7 +471,8 @@ export const mockSiteConfig: SiteConfig = {
   maintenance_enabled: false,
   points_enabled: true,
   points_rate: 100,
-  footer_text: "Orion Key - 自动化发卡系统",
+  footer_text: "Orion Key - 自动发卡平台",
+  github_url: "https://github.com/orion-key/orion-key",
 }
 
 export const mockSiteConfigKVs: SiteConfigKV[] = [
@@ -487,7 +488,8 @@ export const mockSiteConfigKVs: SiteConfigKV[] = [
   { config_key: "maintenance_enabled", config_value: "false", config_group: "maintenance" },
   { config_key: "points_enabled", config_value: "true", config_group: "points" },
   { config_key: "points_rate", config_value: "100", config_group: "points" },
-  { config_key: "footer_text", config_value: "Orion Key - 自动化发卡系统", config_group: "basic" },
+  { config_key: "footer_text", config_value: "Orion Key - 自动发卡平台", config_group: "basic" },
+  { config_key: "github_url", config_value: "https://github.com/orion-key/orion-key", config_group: "basic" },
 ]
 
 // ============================================================

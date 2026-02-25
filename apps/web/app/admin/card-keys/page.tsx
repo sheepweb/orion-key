@@ -11,6 +11,8 @@ import {
   X,
   FileText,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
@@ -21,7 +23,8 @@ import {
   mockImportBatchList,
   mockProducts,
 } from "@/lib/mock-data"
-import type { CardKeyStockSummary, CardImportBatch, ProductCard } from "@/types"
+import { Modal } from "@/components/ui/modal"
+import type { CardKeyStockSummary, CardKeyListItem, CardImportBatch, ProductCard, ProductSpec } from "@/types"
 
 export default function AdminCardKeysPage() {
   const { t } = useLocale()
@@ -35,11 +38,21 @@ export default function AdminCardKeysPage() {
   const [products, setProducts] = useState<ProductCard[]>([])
   const [filterProductId, setFilterProductId] = useState("")
 
+  // Detail modal state
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [detailItem, setDetailItem] = useState<CardKeyStockSummary | null>(null)
+  const [detailKeys, setDetailKeys] = useState<CardKeyListItem[]>([])
+  const [detailTotal, setDetailTotal] = useState(0)
+  const [detailPage, setDetailPage] = useState(1)
+  const [detailLoading, setDetailLoading] = useState(false)
+
   // Import form state
   const [importProductId, setImportProductId] = useState("")
   const [importSpecId, setImportSpecId] = useState("")
   const [importContent, setImportContent] = useState("")
   const [importing, setImporting] = useState(false)
+  const [importSpecs, setImportSpecs] = useState<ProductSpec[]>([])
+  const [loadingSpecs, setLoadingSpecs] = useState(false)
 
   const fetchStock = async () => {
     try {
@@ -94,6 +107,26 @@ export default function AdminCardKeysPage() {
   const totalSold = stockList.reduce((s, r) => s + r.sold, 0)
   const totalInvalid = stockList.reduce((s, r) => s + r.invalid, 0)
 
+  const handleProductChange = async (productId: string) => {
+    setImportProductId(productId)
+    setImportSpecId("")
+    setImportSpecs([])
+    if (!productId) return
+    setLoadingSpecs(true)
+    try {
+      const specs = await withMockFallback(
+        () => adminProductApi.getSpecs(productId),
+        () => []
+      )
+      setImportSpecs(specs)
+      if (specs.length > 0) setImportSpecId(specs[0].id)
+    } catch {
+      setImportSpecs([])
+    } finally {
+      setLoadingSpecs(false)
+    }
+  }
+
   const handleImport = async () => {
     if (!importProductId) {
       toast.error("请选择商品")
@@ -136,16 +169,62 @@ export default function AdminCardKeysPage() {
     }
   }
 
-  const handleInvalidate = async (id: string) => {
+  const fetchDetailKeys = async (item: CardKeyStockSummary, page: number) => {
+    setDetailLoading(true)
     try {
-      await withMockFallback(
-        () => adminCardKeyApi.invalidate(id),
-        () => null
+      const data = await withMockFallback(
+        () => adminCardKeyApi.getList({
+          product_id: item.product_id,
+          spec_id: item.spec_id,
+          page,
+          page_size: 20,
+        }),
+        () => ({ list: [], pagination: { page, page_size: 20, total: 0 } })
       )
-      toast.success("作废成功")
+      setDetailKeys(data.list)
+      setDetailTotal(data.pagination.total)
+    } catch {
+      setDetailKeys([])
+      setDetailTotal(0)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const handleViewDetail = (item: CardKeyStockSummary) => {
+    setDetailItem(item)
+    setDetailPage(1)
+    setShowDetailModal(true)
+    fetchDetailKeys(item, 1)
+  }
+
+  const handleDetailPageChange = (page: number) => {
+    setDetailPage(page)
+    if (detailItem) fetchDetailKeys(detailItem, page)
+  }
+
+  // Batch invalidate confirmation state
+  const [showInvalidateConfirm, setShowInvalidateConfirm] = useState<CardKeyStockSummary | null>(null)
+  const [invalidating, setInvalidating] = useState(false)
+
+  const handleBatchInvalidate = async () => {
+    if (!showInvalidateConfirm) return
+    setInvalidating(true)
+    try {
+      const result = await withMockFallback(
+        () => adminCardKeyApi.batchInvalidate({
+          product_id: showInvalidateConfirm.product_id,
+          spec_id: showInvalidateConfirm.spec_id,
+        }),
+        () => ({ invalidated_count: showInvalidateConfirm.available })
+      )
+      toast.success(`已作废 ${result.invalidated_count} 条可用卡密`)
+      setShowInvalidateConfirm(null)
       await fetchStock()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "作废失败")
+    } finally {
+      setInvalidating(false)
     }
   }
 
@@ -272,14 +351,19 @@ export default function AdminCardKeysPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <button type="button" className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" title={t("admin.viewDetail")}>
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                            title={t("admin.viewDetail")}
+                            onClick={() => handleViewDetail(item)}
+                          >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
                             className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                             title={t("admin.batchInvalidate")}
-                            onClick={() => handleInvalidate(item.product_id)}
+                            onClick={() => setShowInvalidateConfirm(item)}
                           >
                             <Ban className="h-4 w-4" />
                           </button>
@@ -346,9 +430,7 @@ export default function AdminCardKeysPage() {
       )}
 
       {/* Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowImportModal(false)}>
-          <div className="w-full max-w-lg rounded-xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <Modal open={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-lg">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">{t("admin.batchImportKeys")}</h2>
               <button
@@ -365,7 +447,7 @@ export default function AdminCardKeysPage() {
                 <select
                   className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   value={importProductId}
-                  onChange={(e) => { setImportProductId(e.target.value); setImportSpecId("") }}
+                  onChange={(e) => handleProductChange(e.target.value)}
                 >
                   <option value="">{t("admin.selectProductPlaceholder")}</option>
                   {products.map((p) => (
@@ -373,16 +455,25 @@ export default function AdminCardKeysPage() {
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">{t("admin.specOptional")}</label>
-                <input
-                  type="text"
-                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder={t("admin.specIdPlaceholder")}
-                  value={importSpecId}
-                  onChange={(e) => setImportSpecId(e.target.value)}
-                />
-              </div>
+              {importProductId && (loadingSpecs ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  加载规格...
+                </div>
+              ) : importSpecs.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">{t("admin.selectSpec")}</label>
+                  <select
+                    className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={importSpecId}
+                    onChange={(e) => setImportSpecId(e.target.value)}
+                  >
+                    {importSpecs.map((spec) => (
+                      <option key={spec.id} value={spec.id}>{spec.name} — {spec.stock_available} 件库存</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null)}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-foreground">{t("admin.cardKeyContentReq")}</label>
                 <textarea
@@ -413,9 +504,140 @@ export default function AdminCardKeysPage() {
                 {importing ? t("admin.importing") : t("admin.import")}
               </button>
             </div>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal open={showDetailModal} onClose={() => setShowDetailModal(false)} className="max-w-[90vw] w-[1100px]">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">卡密详情</h2>
+            {detailItem && (
+              <p className="text-sm text-muted-foreground">
+                {detailItem.product_title}{detailItem.spec_name ? ` — ${detailItem.spec_name}` : ""}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDetailModal(false)}
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6">
+          {detailLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : detailKeys.length === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">暂无卡密数据</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm table-fixed">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="w-[40%] px-3 py-2 text-left font-medium text-muted-foreground">卡密内容</th>
+                    <th className="w-[8%] px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">状态</th>
+                    <th className="w-[17%] px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">创建时间</th>
+                    <th className="w-[18%] px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">订单号</th>
+                    <th className="w-[17%] px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">售出时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detailKeys.map((key) => (
+                    <tr key={key.id} className="border-b border-border/50 last:border-0">
+                      <td className="px-3 py-2 font-mono text-xs text-foreground break-all">{key.content}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-medium",
+                          key.status === "AVAILABLE" && "bg-emerald-500/10 text-emerald-600",
+                          key.status === "SOLD" && "bg-blue-500/10 text-blue-600",
+                          key.status === "LOCKED" && "bg-amber-500/10 text-amber-600",
+                          key.status === "INVALID" && "bg-red-500/10 text-red-600",
+                        )}>
+                          {key.status === "AVAILABLE" ? "可用" : key.status === "SOLD" ? "已售" : key.status === "LOCKED" ? "锁定" : "已作废"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(key.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                        {key.order_id ? key.order_id.slice(0, 8) + "..." : "-"}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                        {key.sold_at ? new Date(key.sold_at).toLocaleString() : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        {detailTotal > 20 && (
+          <div className="flex items-center justify-between border-t border-border px-6 py-3">
+            <span className="text-sm text-muted-foreground">共 {detailTotal} 条</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent disabled:opacity-50"
+                disabled={detailPage <= 1}
+                onClick={() => handleDetailPageChange(detailPage - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="px-2 text-sm text-foreground">{detailPage} / {Math.ceil(detailTotal / 20)}</span>
+              <button
+                type="button"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent disabled:opacity-50"
+                disabled={detailPage >= Math.ceil(detailTotal / 20)}
+                onClick={() => handleDetailPageChange(detailPage + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Batch Invalidate Confirmation */}
+      <Modal open={showInvalidateConfirm !== null} onClose={() => setShowInvalidateConfirm(null)} className="max-w-md">
+        <div className="flex flex-col gap-4 p-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-destructive/10 p-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-foreground">确认批量作废</h3>
+              {showInvalidateConfirm && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  确定要将「{showInvalidateConfirm.product_title}
+                  {showInvalidateConfirm.spec_name ? ` — ${showInvalidateConfirm.spec_name}` : ""}」
+                  的 <span className="font-medium text-foreground">{showInvalidateConfirm.available}</span> 条可用卡密全部作废吗？此操作不可撤销。
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+              onClick={() => setShowInvalidateConfirm(null)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+              onClick={handleBatchInvalidate}
+              disabled={invalidating}
+            >
+              {invalidating ? "作废中..." : "确认作废"}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

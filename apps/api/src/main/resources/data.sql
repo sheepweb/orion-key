@@ -34,6 +34,11 @@ INSERT INTO site_configs (id, config_key, config_value, config_group, created_at
 SELECT gen_random_uuid(), 'site_description', 'ChatGPT / Claude / Midjourney 等 AI 账号与密钥，自动发货，安全可靠', 'site', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'site_description');
 
+-- GitHub 仓库地址，显示在页脚（留空则不显示）
+INSERT INTO site_configs (id, config_key, config_value, config_group, created_at, updated_at)
+SELECT gen_random_uuid(), 'github_url', '', 'site', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'github_url');
+
 -- 积分功能总开关 (true/false)
 INSERT INTO site_configs (id, config_key, config_value, config_group, created_at, updated_at)
 SELECT gen_random_uuid(), 'points_enabled', 'true', 'site', NOW(), NOW()
@@ -94,18 +99,52 @@ SELECT gen_random_uuid(), 'order_expire_minutes', '30', 'risk', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'order_expire_minutes');
 
 -- ────────────────────────────────────────
--- 4. 支付渠道（桩实现，待接入真实支付 SDK）
+-- 4. 支付渠道（易支付聚合支付）
 -- ────────────────────────────────────────
-INSERT INTO payment_channels (id, channel_code, channel_name, config_data, is_enabled, sort_order, is_deleted, created_at, updated_at)
-SELECT gen_random_uuid(), 'WECHAT', '微信支付', '{}', true, 1, 0, NOW(), NOW()
-WHERE NOT EXISTS (SELECT 1 FROM payment_channels WHERE channel_code = 'WECHAT');
+-- Migrate legacy uppercase channel codes to lowercase
+UPDATE payment_channels SET channel_code = 'wechat' WHERE channel_code = 'WECHAT';
+UPDATE payment_channels SET channel_code = 'alipay' WHERE channel_code = 'ALIPAY';
 
-INSERT INTO payment_channels (id, channel_code, channel_name, config_data, is_enabled, sort_order, is_deleted, created_at, updated_at)
-SELECT gen_random_uuid(), 'ALIPAY', '支付宝', '{}', true, 2, 0, NOW(), NOW()
-WHERE NOT EXISTS (SELECT 1 FROM payment_channels WHERE channel_code = 'ALIPAY');
+-- Backfill provider_type for existing rows (JPA ddl-auto will create the column)
+UPDATE payment_channels SET provider_type = 'epay' WHERE provider_type IS NULL;
+
+INSERT INTO payment_channels (id, channel_code, channel_name, provider_type, config_data, is_enabled, sort_order, is_deleted, created_at, updated_at)
+SELECT gen_random_uuid(), 'wechat', '微信支付', 'epay',
+       '{"pid":"YOUR_PID","key":"YOUR_KEY","api_url":"https://pay.example.com/","notify_url":"https://yourdomain.com/api/payments/webhook/epay","return_url":"https://yourdomain.com/pay"}',
+       false, 1, 0, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM payment_channels WHERE channel_code = 'wechat');
+
+INSERT INTO payment_channels (id, channel_code, channel_name, provider_type, config_data, is_enabled, sort_order, is_deleted, created_at, updated_at)
+SELECT gen_random_uuid(), 'alipay', '支付宝', 'epay',
+       '{"pid":"YOUR_PID","key":"YOUR_KEY","api_url":"https://pay.example.com/","notify_url":"https://yourdomain.com/api/payments/webhook/epay","return_url":"https://yourdomain.com/pay"}',
+       false, 2, 0, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM payment_channels WHERE channel_code = 'alipay');
 
 -- ────────────────────────────────────────
--- 5. 测试数据：商品分类 + 商品 + 卡密（开发/演示用，生产可删除此段）
+-- 5. 货币类型
+-- ────────────────────────────────────────
+INSERT INTO currencies (id, code, name, symbol, is_enabled, sort_order, created_at, updated_at)
+SELECT gen_random_uuid(), 'CNY', '人民币', '¥', true, 1, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE code = 'CNY');
+
+INSERT INTO currencies (id, code, name, symbol, is_enabled, sort_order, created_at, updated_at)
+SELECT gen_random_uuid(), 'USD', '美元', '$', true, 2, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE code = 'USD');
+
+INSERT INTO currencies (id, code, name, symbol, is_enabled, sort_order, created_at, updated_at)
+SELECT gen_random_uuid(), 'USDT', 'USDT (TRC-20)', '₮', true, 3, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE code = 'USDT');
+
+INSERT INTO currencies (id, code, name, symbol, is_enabled, sort_order, created_at, updated_at)
+SELECT gen_random_uuid(), 'EUR', '欧元', '€', true, 4, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE code = 'EUR');
+
+INSERT INTO currencies (id, code, name, symbol, is_enabled, sort_order, created_at, updated_at)
+SELECT gen_random_uuid(), 'GBP', '英镑', '£', true, 5, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE code = 'GBP');
+
+-- ────────────────────────────────────────
+-- 6. 测试数据：商品分类 + 商品 + 卡密（开发/演示用，生产可删除此段）
 -- ────────────────────────────────────────
 
 -- 分类：游戏充值

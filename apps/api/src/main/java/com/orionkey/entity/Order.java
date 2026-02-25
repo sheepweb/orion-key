@@ -60,4 +60,9 @@ public class Order extends BaseEntity {
     private String clientIp;
 
     private String sessionToken;
+
+    @Column(columnDefinition = "TEXT")
+    private String paymentUrl;
+
+    private String epayTradeNo;
 }

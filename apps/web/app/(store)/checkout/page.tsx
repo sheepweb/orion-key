@@ -14,7 +14,7 @@ import type { PaymentChannelItem } from "@/types"
 export default function CheckoutPage() {
   const { t } = useLocale()
   const router = useRouter()
-  const { items, totalAmount, itemCount } = useCart()
+  const { items, totalAmount, itemCount, refreshCart } = useCart()
 
   const [email, setEmail] = useState("")
   const [channels, setChannels] = useState<PaymentChannelItem[]>([])
@@ -72,8 +72,11 @@ export default function CheckoutPage() {
         }),
         () => mockCreateOrder(email, selectedPayment)
       )
+      await refreshCart()
       toast.success(t("checkout.processingOrder"))
-      router.push(`/pay/${result.payment.order_id}?method=${selectedPayment}`)
+      const qr = result.payment.qrcode_url || result.payment.payment_url || ""
+      const payUrl = `/pay/${result.payment.order_id}?method=${selectedPayment}${qr ? `&qr=${encodeURIComponent(qr)}` : ""}`
+      router.push(payUrl)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("common.error")
       toast.error(message)

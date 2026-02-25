@@ -24,7 +24,7 @@ export function PaymentSelector({ channels, selected, onSelect }: PaymentSelecto
               : "border-border text-foreground hover:border-primary/50 hover:bg-accent"
           )}
         >
-          <PaymentIcon method={ch.channel_code} className="h-4 w-4 shrink-0" />
+          <PaymentIcon method={ch.channel_code} className="h-5 w-5 shrink-0" />
           {ch.channel_name}
         </button>
       ))}

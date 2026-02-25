@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Package, ExternalLink } from "lucide-react"
+import { PaymentIcon, getPaymentLabel } from "@/components/shared/payment-icon"
 import { useLocale } from "@/lib/context"
 import { useRequireAuth } from "@/lib/hooks"
 import { userApi, withMockFallback } from "@/services/api"
@@ -118,7 +119,10 @@ export default function MyOrdersPage() {
               <div className="mb-3 flex items-center gap-3 text-sm text-muted-foreground">
                 <span>{order.order_type === "CART" ? t("myOrders.cartOrder") : t("myOrders.directOrder")}</span>
                 <span>·</span>
-                <span>{order.payment_method}</span>
+                <span className="inline-flex items-center gap-1">
+                  <PaymentIcon method={order.payment_method} className="h-4 w-4" />
+                  {getPaymentLabel(order.payment_method, t)}
+                </span>
               </div>
 
               {/* Footer */}
@@ -132,7 +136,7 @@ export default function MyOrdersPage() {
                 <div className="flex gap-2">
                   {order.status === "PENDING" && (
                     <Link
-                      href={`/pay/${order.id}`}
+                      href={`/pay/${order.id}?method=${order.payment_method}`}
                       className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                     >
                       {t("payment.title")}

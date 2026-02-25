@@ -69,7 +69,6 @@ export function DashboardStats({ stats }: { stats: DashboardStatsType }) {
 
 export function LowStockAlert({ products }: { products: LowStockProduct[] }) {
   const { t } = useLocale()
-  if (products.length === 0) return null
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -77,16 +76,20 @@ export function LowStockAlert({ products }: { products: LowStockProduct[] }) {
         <AlertTriangle className="h-4 w-4 text-amber-500" />
         <h3 className="font-semibold text-foreground">{t("admin.lowStockWarning")}</h3>
       </div>
-      <div className="flex flex-col gap-3">
-        {products.map((item) => (
-          <div key={item.product_id} className="flex items-center justify-between rounded-lg bg-amber-500/5 px-3 py-2">
-            <span className="text-sm text-foreground">{item.title}</span>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600">
-              {t("admin.remaining")} {item.available_stock}
-            </span>
-          </div>
-        ))}
-      </div>
+      {products.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("admin.noLowStock")}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {products.map((item) => (
+            <div key={item.product_id} className="flex items-center justify-between rounded-lg bg-amber-500/5 px-3 py-2">
+              <span className="text-sm text-foreground">{item.title}</span>
+              <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600">
+                {t("admin.remaining")} {item.available_stock}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
