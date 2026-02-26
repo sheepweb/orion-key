@@ -8,6 +8,7 @@
 #   后端 (Java):  Jib Maven 插件直接产出 Docker 镜像（无需 Dockerfile）
 #   前端 (Next.js): 标准 Dockerfile 多阶段构建
 #
+# 兼容国内服务器无法连接github不稳定导致的git clone 大量数据时超时
 # ===================================================================
 
 name: Orion Key CI/CD
@@ -107,8 +108,6 @@ jobs:
       # 注意：此 job 不需要 checkout 代码（避免国内服务器 git clone github.com 超时）
       # docker-compose.yml 已在首次部署时手动放置到 /opt/orion-key/
       # 如果 docker-compose.prod.yml 有变更，手动更新服务器上的文件即可
-#      - name: Checkout code
-#        uses: actions/checkout@v4
 
       # 重新计算镜像标签（与 Job 1 逻辑一致）
       - name: Compute image tag
