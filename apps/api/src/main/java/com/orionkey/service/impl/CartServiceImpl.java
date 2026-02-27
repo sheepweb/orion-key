@@ -92,7 +92,7 @@ public class CartServiceImpl implements CartService {
                 : cardKeyRepository.countByProductIdAndSpecIdIsNullAndStatus(productId, CardKeyStatus.AVAILABLE);
         if (totalQty > available) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                    "库存不足，当前库存 " + available + "，购物车已有 " + existingQty);
+                    "该商品库存不足，最多可购买 " + available + " 件");
         }
 
         if (existing.isPresent()) {
@@ -124,7 +124,7 @@ public class CartServiceImpl implements CartService {
                 : cardKeyRepository.countByProductIdAndSpecIdIsNullAndStatus(item.getProductId(), CardKeyStatus.AVAILABLE);
         if (quantity > available) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                    "库存不足，当前可用 " + available);
+                    "该商品库存不足，最多可购买 " + available + " 件");
         }
 
         item.setQuantity(quantity);
