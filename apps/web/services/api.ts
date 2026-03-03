@@ -319,6 +319,11 @@ export const orderApi = {
       method: "POST",
       body: JSON.stringify({ txid }),
     }),
+  repay: (orderId: string, device?: string) =>
+    request<import("@/types").PaymentCreateResult>(`/orders/${orderId}/repay`, {
+      method: "POST",
+      body: JSON.stringify({ device }),
+    }),
 }
 
 // ============================================================

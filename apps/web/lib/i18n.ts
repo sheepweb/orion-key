@@ -181,6 +181,9 @@ const zh = {
   "payment.usdt.warnChain": "请务必使用 {chain} 网络，选错网络将无法找回",
   "payment.usdt.delayHint": "区块链转账通常需要 1~3 分钟确认到账，请耐心等待，系统会自动检测",
   "payment.usdt.rateHint": "将以实时汇率换算为 USDT 金额，转账时请确保金额精确一致",
+  "payment.redirectingToPay": "正在跳转至支付页面...",
+  "payment.returnedFromPay": "如已完成支付，请等待系统确认",
+  "payment.retryPay": "重新发起支付",
   "payment.completedPayment": "已完成支付？去",
   "payment.goQueryOrder": "查询订单",
 
@@ -737,6 +740,9 @@ const en: Record<keyof typeof zh, string> = {
   "payment.usdt.warnChain": "Use {chain} network only. Funds sent on wrong network cannot be recovered",
   "payment.usdt.delayHint": "Blockchain transfers typically take 1-3 minutes to confirm. Please wait patiently",
   "payment.usdt.rateHint": "Amount will be converted to USDT at real-time exchange rate",
+  "payment.redirectingToPay": "Redirecting to payment...",
+  "payment.returnedFromPay": "If paid, please wait for confirmation",
+  "payment.retryPay": "Retry Payment",
   "payment.completedPayment": "Payment completed? ",
   "payment.goQueryOrder": "Check order status",
 

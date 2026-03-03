@@ -64,6 +64,9 @@ public class Order extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String paymentUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String qrcodeUrl;
+
     private String epayTradeNo;
 
     // ── USDT 支付字段 ──

@@ -47,6 +47,11 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Map<String, Object> createPayment(UUID orderId, String paymentMethod, BigDecimal amount) {
+        return createPayment(orderId, paymentMethod, amount, null);
+    }
+
+    @Override
+    public Map<String, Object> createPayment(UUID orderId, String paymentMethod, BigDecimal amount, String device) {
         // 1. 查找渠道并验证已启用
         PaymentChannel channel = paymentChannelRepository.findByChannelCodeAndIsDeleted(paymentMethod, 0)
                 .filter(PaymentChannel::isEnabled)
@@ -56,8 +61,9 @@ public class PaymentServiceImpl implements PaymentService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "订单不存在"));
 
-        // 3. 幂等：已有支付URL直接返回
-        if (order.getPaymentUrl() != null && !order.getPaymentUrl().isEmpty()) {
+        // 3. 幂等：已有支付URL直接返回（paymentUrl 或 qrcodeUrl 任一存在即可）
+        if ((order.getPaymentUrl() != null && !order.getPaymentUrl().isEmpty())
+                || (order.getQrcodeUrl() != null && !order.getQrcodeUrl().isEmpty())) {
             log.info("Returning cached payment URL for order: {}", orderId);
             return buildResult(order);
         }
@@ -65,7 +71,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 4. 按 providerType 路由到不同的支付实现
         String providerType = channel.getProviderType();
         switch (providerType) {
-            case "epay" -> createEpayPayment(channel, order, paymentMethod, amount);
+            case "epay" -> createEpayPayment(channel, order, paymentMethod, amount, device);
             case "native_alipay" -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "原生支付宝支付尚未实现，请使用易支付渠道");
             case "native_wxpay" -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "原生微信支付尚未实现，请使用易支付渠道");
             case "usdt" -> createBepusdtPayment(channel, order, amount);
@@ -117,7 +123,7 @@ public class PaymentServiceImpl implements PaymentService {
     /**
      * 易支付下单流程
      */
-    private void createEpayPayment(PaymentChannel channel, Order order, String paymentMethod, BigDecimal amount) {
+    private void createEpayPayment(PaymentChannel channel, Order order, String paymentMethod, BigDecimal amount, String device) {
         String epayType = EPAY_TYPE_MAP.get(paymentMethod.toLowerCase());
         if (epayType == null) {
             throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "该渠道不支持易支付");
@@ -132,12 +138,13 @@ public class PaymentServiceImpl implements PaymentService {
                 epayType,
                 productName,
                 amount,
-                order.getClientIp()
+                order.getClientIp(),
+                device
         );
 
-        String qrcodeUrl = epayResult.qrcodeUrl();
-        String payUrl = epayResult.payUrl();
-        order.setPaymentUrl(qrcodeUrl != null ? qrcodeUrl : payUrl);
+        // 分别存储：payUrl 是 H5 跳转链接，qrcodeUrl 是二维码 URL
+        order.setPaymentUrl(epayResult.payUrl());
+        order.setQrcodeUrl(epayResult.qrcodeUrl());
         order.setEpayTradeNo(epayResult.tradeNo());
         orderRepository.save(order);
     }
@@ -161,8 +168,11 @@ public class PaymentServiceImpl implements PaymentService {
     private Map<String, Object> buildResult(Order order) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("order_id", order.getId());
-        result.put("payment_url", order.getPaymentUrl());
-        result.put("qrcode_url", order.getPaymentUrl());
+        // payment_url: 兼容旧逻辑，优先返回 qrcodeUrl（PC 二维码），fallback 到 paymentUrl（H5 跳转）
+        String effectiveUrl = order.getQrcodeUrl() != null ? order.getQrcodeUrl() : order.getPaymentUrl();
+        result.put("payment_url", effectiveUrl);
+        result.put("qrcode_url", order.getQrcodeUrl());
+        result.put("pay_url", order.getPaymentUrl());
         result.put("expires_at", order.getExpiresAt());
 
         // USDT 支付额外字段
@@ -197,6 +207,41 @@ public class PaymentServiceImpl implements PaymentService {
             log.warn("Failed to parse channel config_data: {}", e.getMessage());
             return Map.of();
         }
+    }
+
+    /** repay 最小间隔（秒），防止频繁调用冲击支付网关 */
+    private static final int REPAY_COOLDOWN_SECONDS = 10;
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, Object> repay(UUID orderId, String device) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "订单不存在"));
+
+        if (order.getStatus() != com.orionkey.constant.OrderStatus.PENDING) {
+            throw new BusinessException(ErrorCode.ORDER_EXPIRED, "订单状态不允许重新支付");
+        }
+
+        if (order.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            order.setStatus(com.orionkey.constant.OrderStatus.EXPIRED);
+            orderRepository.save(order);
+            throw new BusinessException(ErrorCode.ORDER_EXPIRED, "订单已过期");
+        }
+
+        // 频率限制：距上次更新不足 REPAY_COOLDOWN_SECONDS 秒则拒绝
+        if (order.getUpdatedAt() != null
+                && order.getUpdatedAt().plusSeconds(REPAY_COOLDOWN_SECONDS).isAfter(java.time.LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "操作过于频繁，请稍后再试");
+        }
+
+        // 清除旧支付信息，跳过幂等缓存
+        order.setPaymentUrl(null);
+        order.setQrcodeUrl(null);
+        order.setEpayTradeNo(null);
+        orderRepository.save(order);
+
+        // 重新创建支付
+        return createPayment(order.getId(), order.getPaymentMethod(), order.getActualAmount(), device);
     }
 
     private static String requireConfig(Map<String, String> cfg, String field, String channelCode) {

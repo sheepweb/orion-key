@@ -16,13 +16,14 @@ import {
   Info,
   ArrowRight,
   AlertTriangle,
+  Smartphone,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { useLocale, useCart, useSiteConfig } from "@/lib/context"
 import { orderApi, withMockFallback } from "@/services/api"
 import type { OrderStatus } from "@/types"
-import { cn } from "@/lib/utils"
+import { cn, detectPaymentDevice, isMobileDevice } from "@/lib/utils"
 import { PaymentIcon, getPaymentLabel, getPaymentBrandColor, getPaymentScanHint } from "@/components/shared/payment-icon"
 
 const POLL_INTERVAL = 3000 // 3 seconds
@@ -42,6 +43,12 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   const [refreshCooldown, setRefreshCooldown] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [qrcodeUrl, setQrcodeUrl] = useState<string>("")
+  const [payUrlH5, setPayUrlH5] = useState<string>("")
+  const [retrying, setRetrying] = useState(false)
+  // 标记是否已经跳转过支付 App（从 sessionStorage 初始化，防止返回后文案错误）
+  const [hasRedirected, setHasRedirected] = useState(false)
+
+  const isMobile = isMobileDevice()
 
   const paymentMethod = searchParams.get("method") || "alipay"
   const paymentMethodName = getPaymentLabel(paymentMethod, t)
@@ -55,11 +62,21 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   const usdtChain = searchParams.get("chain") || paymentMethod
   const chainDisplayName = usdtChain.includes("trc20") ? "TRC-20" : usdtChain.includes("bep20") ? "BEP-20" : usdtChain
 
-  // 初始化：获取订单状态 + QR code + 真实倒计时
+  // 初始化：获取订单状态 + QR code + H5 pay URL + 真实倒计时
   useEffect(() => {
     const qrFromParam = searchParams.get("qr")
     if (qrFromParam) {
       setQrcodeUrl(decodeURIComponent(qrFromParam))
+    }
+
+    const payurlFromParam = searchParams.get("payurl")
+    if (payurlFromParam) {
+      setPayUrlH5(decodeURIComponent(payurlFromParam))
+    }
+
+    // 检查是否已跳转过支付 App（从 sessionStorage 恢复状态）
+    if (sessionStorage.getItem(`pay_redirected_${orderId}`)) {
+      setHasRedirected(true)
     }
 
     // 从 API 获取服务端计算的 remaining_seconds，不依赖客户端时钟
@@ -81,6 +98,19 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     }
     fetchOrderInfo()
   }, [orderId, searchParams])
+
+  // H5 自动跳转（移动端 + 有 payUrl + PENDING 状态 + 未跳转过）
+  useEffect(() => {
+    if (!isMobile || !payUrlH5 || status !== "PENDING" || isUsdtPayment) return
+    const storageKey = `pay_redirected_${orderId}`
+    if (sessionStorage.getItem(storageKey)) {
+      setHasRedirected(true)
+      return
+    }
+    sessionStorage.setItem(storageKey, "1")
+    setHasRedirected(true)
+    window.location.href = payUrlH5
+  }, [isMobile, payUrlH5, status, orderId, isUsdtPayment])
 
   // Countdown timer — 仅在服务端返回真实倒计时后才开始递减
   useEffect(() => {
@@ -154,6 +184,33 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
       toast.info(t("payment.statusRefreshed"))
     }
   }, [refreshCooldown, isRefreshing, orderId, t])
+
+  // 重新发起支付（移动端重试）
+  const handleRetryPayment = useCallback(async () => {
+    if (retrying) return
+    setRetrying(true)
+    try {
+      const device = detectPaymentDevice()
+      const result = await orderApi.repay(orderId, device)
+      // 更新支付链接
+      if (result.pay_url) setPayUrlH5(result.pay_url)
+      if (result.qrcode_url) setQrcodeUrl(result.qrcode_url)
+      else if (result.payment_url) setQrcodeUrl(result.payment_url)
+
+      if (isMobile && result.pay_url) {
+        // 清除跳转标记，允许重新跳转
+        sessionStorage.removeItem(`pay_redirected_${orderId}`)
+        window.location.href = result.pay_url
+      } else {
+        toast.success(t("payment.statusRefreshed"))
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("common.error")
+      toast.error(msg)
+    } finally {
+      setRetrying(false)
+    }
+  }, [retrying, orderId, isMobile, t])
 
   const copyToClipboard = useCallback((text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -334,8 +391,8 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
             {/* 检测状态 */}
             <p className="animate-pulse text-sm text-primary">{t("payment.detecting")}</p>
           </>
-        ) : (
-          /* ========== 传统支付视图（支付宝/微信） ========== */
+        ) : !isMobile ? (
+          /* ========== PC 传统支付视图（支付宝/微信） — 不变 ========== */
           <>
             <div
               className="flex w-72 flex-col items-center gap-4 rounded-2xl px-6 pb-8 pt-6"
@@ -358,6 +415,44 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
               </div>
             </div>
             <p className="animate-pulse text-sm text-primary">{t("payment.detecting")}</p>
+          </>
+        ) : (
+          /* ========== H5 移动端支付视图（新增） ========== */
+          <>
+            <div
+              className="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl px-6 pb-6 pt-6"
+              style={{ backgroundColor: brandColor || "#374151" }}
+            >
+              <div className="flex items-center gap-2.5">
+                <PaymentIcon method={paymentMethod} className="h-10 w-10" variant="plain" />
+                <span className="text-xl font-bold text-white">{paymentMethodName}</span>
+              </div>
+              <Smartphone className="h-8 w-8 text-white/80" />
+            </div>
+
+            {/* 状态提示：未跳转过 → "正在跳转..."；已跳转返回 → "如已完成支付..." */}
+            {!hasRedirected ? (
+              <p className="animate-pulse text-sm text-primary">{t("payment.redirectingToPay")}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("payment.returnedFromPay")}</p>
+            )}
+
+            {/* 检测状态 */}
+            <p className="animate-pulse text-sm text-primary">{t("payment.detecting")}</p>
+
+            {/* 重新发起支付按钮 */}
+            <button
+              onClick={handleRetryPayment}
+              disabled={retrying}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {retrying ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {t("payment.retryPay")}
+            </button>
           </>
         )}
 

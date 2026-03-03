@@ -177,6 +177,7 @@ export interface PaymentCreateResult {
   order_id: string
   payment_url: string
   qrcode_url?: string
+  pay_url?: string
   expires_at: string
   // USDT 新增（仅 USDT 渠道返回）
   wallet_address?: string
@@ -299,6 +300,7 @@ export interface CreateOrderRequest {
   payment_method: string
   use_points?: boolean
   idempotency_key: string
+  device?: string
 }
 
 export interface CreateCartOrderRequest {
@@ -306,6 +308,7 @@ export interface CreateCartOrderRequest {
   payment_method: string
   use_points?: boolean
   idempotency_key: string
+  device?: string
 }
 
 // ============================================================

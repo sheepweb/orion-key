@@ -30,6 +30,7 @@ public class OrderController {
     private final OrderRepository orderRepository;
     private final UnmatchedTransactionRepository unmatchedTransactionRepository;
     private final TxidVerifyService txidVerifyService;
+    private final com.orionkey.service.PaymentService paymentService;
 
     @PostMapping
     public ApiResponse<?> createOrder(@RequestBody Map<String, Object> request,
@@ -73,6 +74,16 @@ public class OrderController {
         response.setContentType("text/plain; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=card-keys-" + id + ".txt");
         response.getWriter().write(content);
+    }
+
+    /**
+     * 重新发起支付（移动端支付取消/失败后重试）
+     */
+    @PostMapping("/{id}/repay")
+    public ApiResponse<?> repayOrder(@PathVariable UUID id,
+                                     @RequestBody(required = false) Map<String, String> body) {
+        String device = body != null ? body.get("device") : null;
+        return ApiResponse.success(paymentService.repay(id, device));
     }
 
     /**

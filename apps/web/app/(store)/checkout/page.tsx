@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { useLocale, useCart } from "@/lib/context"
 import { orderApi, paymentApi, withMockFallback, getApiErrorMessage } from "@/services/api"
 import { mockPaymentChannels, mockCreateOrder } from "@/lib/mock-data"
-import { validateEmail, generateIdempotencyKey, getCurrencySymbol } from "@/lib/utils"
+import { validateEmail, generateIdempotencyKey, getCurrencySymbol, detectPaymentDevice } from "@/lib/utils"
 import { PaymentSelector } from "@/components/shared/payment-selector"
 import type { PaymentChannelItem } from "@/types"
 
@@ -64,18 +64,23 @@ export default function CheckoutPage() {
 
     setSubmitting(true)
     try {
+      const device = detectPaymentDevice()
       const result = await withMockFallback(
         () => orderApi.createFromCart({
           email,
           payment_method: selectedPayment,
           idempotency_key: generateIdempotencyKey(),
+          device,
         }),
         () => mockCreateOrder(email, selectedPayment)
       )
       await refreshCart()
       toast.success(t("checkout.processingOrder"))
+      const payUrlH5 = result.payment.pay_url || ""
       const qr = result.payment.qrcode_url || result.payment.payment_url || ""
-      let payUrl = `/pay/${result.payment.order_id}?method=${selectedPayment}${qr ? `&qr=${encodeURIComponent(qr)}` : ""}`
+      let payUrl = `/pay/${result.payment.order_id}?method=${selectedPayment}`
+      if (qr) payUrl += `&qr=${encodeURIComponent(qr)}`
+      if (payUrlH5) payUrl += `&payurl=${encodeURIComponent(payUrlH5)}`
       // USDT 支付额外参数
       if (result.payment.wallet_address) {
         payUrl += `&wallet=${encodeURIComponent(result.payment.wallet_address)}`
