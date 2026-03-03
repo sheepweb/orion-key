@@ -302,6 +302,12 @@ docker compose -f docker-compose.prod.yml up -d    # Start in background
 
 ---
 
+## AI Store (Not a Demo)
+
+[![Orion Key Shop](https://img.shields.io/badge/Orion%20Key%20Shop-Visit%20Store-FF6B00?style=for-the-badge)](https://www.orionkey.shop/)
+
+---
+
 ## Telegram Group
 
 [![Telegram](https://img.shields.io/badge/Telegram-Group-26A5E4?logo=telegram&logoColor=white)](https://t.me/+bFPWrYnruDIwZWRh)
