@@ -21,7 +21,7 @@ public class AdminSiteConfigController {
         return ApiResponse.success(siteConfigService.getAllConfigs());
     }
 
-    @LogOperation(action = "config.update", targetType = "SITE_CONFIG")
+    @LogOperation(action = "config.update", targetType = "SITE_CONFIG", detail = "'更新配置'")
     @SuppressWarnings("unchecked")
     @PutMapping
     public ApiResponse<Void> updateConfigs(@RequestBody Map<String, Object> request) {

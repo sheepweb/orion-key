@@ -37,14 +37,14 @@ public class AdminProductController {
         return ApiResponse.success(productService.getAdminProductDetail(id));
     }
 
-    @LogOperation(action = "product.update", targetType = "PRODUCT", targetId = "#id")
+    @LogOperation(action = "product.update", targetType = "PRODUCT", targetId = "#id", detail = "'修改商品'")
     @PutMapping("/{id}")
     public ApiResponse<Void> updateProduct(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
         productService.updateProduct(id, request);
         return ApiResponse.success();
     }
 
-    @LogOperation(action = "product.delete", targetType = "PRODUCT", targetId = "#id")
+    @LogOperation(action = "product.delete", targetType = "PRODUCT", targetId = "#id", detail = "'删除商品'")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteProduct(@PathVariable UUID id) {
         productService.deleteProduct(id);

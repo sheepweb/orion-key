@@ -47,7 +47,7 @@ public class AdminCardKeyController {
         return ApiResponse.success(adminCardKeyService.getImportBatches(productId, page, pageSize));
     }
 
-    @LogOperation(action = "cardkey.invalidate", targetType = "CARD_KEY", targetId = "#id")
+    @LogOperation(action = "cardkey.invalidate", targetType = "CARD_KEY", targetId = "#id", detail = "'作废卡密'")
     @PostMapping("/{id}/invalidate")
     public ApiResponse<Void> invalidateCardKey(@PathVariable UUID id) {
         adminCardKeyService.invalidateCardKey(id);

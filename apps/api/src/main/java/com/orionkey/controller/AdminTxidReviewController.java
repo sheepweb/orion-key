@@ -65,7 +65,7 @@ public class AdminTxidReviewController {
         return ApiResponse.success(response);
     }
 
-    @LogOperation(action = "txid.approve", targetType = "TXID_REVIEW", targetId = "#id")
+    @LogOperation(action = "txid.approve", targetType = "TXID_REVIEW", targetId = "#id", detail = "'通过TXID审核'")
     @PostMapping("/{id}/approve")
     public ApiResponse<Void> approveTxidReview(@PathVariable UUID id) {
         UnmatchedTransaction ut = unmatchedTransactionRepository.findById(id)
@@ -97,7 +97,7 @@ public class AdminTxidReviewController {
         return ApiResponse.success();
     }
 
-    @LogOperation(action = "txid.reject", targetType = "TXID_REVIEW", targetId = "#id")
+    @LogOperation(action = "txid.reject", targetType = "TXID_REVIEW", targetId = "#id", detail = "'拒绝TXID审核'")
     @PostMapping("/{id}/reject")
     public ApiResponse<Void> rejectTxidReview(@PathVariable UUID id,
                                                @RequestBody Map<String, String> request) {

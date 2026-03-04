@@ -15,6 +15,8 @@ public class SiteConfigServiceImpl implements SiteConfigService {
 
     private final SiteConfigRepository siteConfigRepository;
 
+    private static final Set<String> NUMERIC_KEYS = Set.of("points_rate");
+
     private static final List<String> PUBLIC_KEYS = List.of(
             "site_name", "site_slogan", "site_description", "logo_url", "favicon_url",
             "announcement_enabled", "announcement", "popup_enabled", "popup_content",
@@ -30,12 +32,14 @@ public class SiteConfigServiceImpl implements SiteConfigService {
                 String val = c.getConfigValue();
                 if ("true".equalsIgnoreCase(val) || "false".equalsIgnoreCase(val)) {
                     result.put(key, Boolean.parseBoolean(val));
-                } else {
+                } else if (NUMERIC_KEYS.contains(key)) {
                     try {
                         result.put(key, Integer.parseInt(val));
                     } catch (NumberFormatException e) {
                         result.put(key, val);
                     }
+                } else {
+                    result.put(key, val);
                 }
             });
         }

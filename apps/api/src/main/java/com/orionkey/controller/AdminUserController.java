@@ -24,7 +24,7 @@ public class AdminUserController {
         return ApiResponse.success(adminUserService.listUsers(keyword, page, pageSize));
     }
 
-    @LogOperation(action = "user.toggle", targetType = "USER", targetId = "#id")
+    @LogOperation(action = "user.toggle", targetType = "USER", targetId = "#id", detail = "'切换用户状态'")
     @PostMapping("/{id}/toggle")
     public ApiResponse<Void> toggleUser(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
         int isDeleted = ((Number) request.get("is_deleted")).intValue();

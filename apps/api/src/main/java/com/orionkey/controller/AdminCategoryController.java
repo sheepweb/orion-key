@@ -28,14 +28,14 @@ public class AdminCategoryController {
         return ApiResponse.success();
     }
 
-    @LogOperation(action = "category.update", targetType = "CATEGORY", targetId = "#id")
+    @LogOperation(action = "category.update", targetType = "CATEGORY", targetId = "#id", detail = "'修改分类'")
     @PutMapping("/{id}")
     public ApiResponse<Void> updateCategory(@PathVariable UUID id, @RequestBody Map<String, Object> request) {
         categoryService.updateCategory(id, request);
         return ApiResponse.success();
     }
 
-    @LogOperation(action = "category.delete", targetType = "CATEGORY", targetId = "#id")
+    @LogOperation(action = "category.delete", targetType = "CATEGORY", targetId = "#id", detail = "'删除分类'")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteCategory(@PathVariable UUID id) {
         categoryService.deleteCategory(id);
