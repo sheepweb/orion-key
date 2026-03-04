@@ -76,15 +76,17 @@ export function StoreShell({ siteName, children }: StoreShellProps) {
   const { user, isLoggedIn, authLoaded } = useAuth()
   const pathname = usePathname()
 
-  // siteConfig 就绪后才判断维护模式（加载中不阻塞页面内容）
+  // 维护模式判断需要 config + auth 都就绪才能准确决策
   const configReady = !isLoading && !!config
   const isExempt = MAINTENANCE_EXEMPT_PATHS.includes(pathname)
   const isAdmin = authLoaded && isLoggedIn && user?.role === "ADMIN"
   const isMaintenance = configReady && config?.maintenance_enabled
 
   // Maintenance mode: block non-admin users on non-exempt pages
-  if (isMaintenance && !isAdmin && !isExempt) {
-    return <MaintenancePage />
+  // auth 未就绪时暂不渲染内容，避免管理员被误拦（auth 读 localStorage，通常 <1 帧）
+  if (isMaintenance && !isExempt) {
+    if (!authLoaded) return null
+    if (!isAdmin) return <MaintenancePage />
   }
 
   return (
