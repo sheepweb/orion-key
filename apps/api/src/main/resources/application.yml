@@ -67,6 +67,11 @@ mail:
   enabled: ${MAIL_ENABLED:true}
   site-url: ${MAIL_SITE_URL:https://example.com}
 
+# Webhook 来源限制（两种方式可同时配置，取并集；均为空则不启用）
+webhook:
+  allowed-ips: ${WEBHOOK_ALLOWED_IPS:}          # 静态 IP 白名单（逗号分隔）
+  allowed-domains: ${WEBHOOK_ALLOWED_DOMAINS:}  # 域名白名单（逗号分隔，自动 DNS 解析，5分钟刷新）
+
 # Logging
 logging:
   level:
