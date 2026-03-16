@@ -44,6 +44,8 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [qrcodeUrl, setQrcodeUrl] = useState<string>("")
   const [payUrlH5, setPayUrlH5] = useState<string>("")
+  const [totalAmount, setTotalAmount] = useState<number | null>(null)
+  const [actualAmount, setActualAmount] = useState<number | null>(null)
   const [retrying, setRetrying] = useState(false)
   // 标记是否已经跳转过支付 App（从 sessionStorage 初始化，防止返回后文案错误）
   const [hasRedirected, setHasRedirected] = useState(false)
@@ -87,6 +89,12 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
         const result = await orderApi.getStatus(orderId)
         if (result.remaining_seconds !== undefined) {
           setTimeLeft(result.remaining_seconds)
+        }
+        if (typeof result.total_amount === "number") {
+          setTotalAmount(result.total_amount)
+        }
+        if (typeof result.actual_amount === "number") {
+          setActualAmount(result.actual_amount)
         }
         if (!qrFromParam && result.payment_url) {
           setQrcodeUrl(result.payment_url)
@@ -143,6 +151,12 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
         if (result.remaining_seconds !== undefined) {
           setTimeLeft(result.remaining_seconds)
         }
+        if (typeof result.total_amount === "number") {
+          setTotalAmount(result.total_amount)
+        }
+        if (typeof result.actual_amount === "number") {
+          setActualAmount(result.actual_amount)
+        }
         if (result.status !== "PENDING") {
           setStatus(result.status)
           if (result.status === "PAID" || result.status === "DELIVERED") {
@@ -173,6 +187,12 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
         () => orderApi.getStatus(orderId),
         () => ({ order_id: orderId, status: "PENDING" as const, expires_at: "", remaining_seconds: 0 })
       )
+      if (typeof result.total_amount === "number") {
+        setTotalAmount(result.total_amount)
+      }
+      if (typeof result.actual_amount === "number") {
+        setActualAmount(result.actual_amount)
+      }
       if (result.status !== "PENDING") {
         setStatus(result.status)
         if (result.status === "PAID" || result.status === "DELIVERED") {
@@ -242,6 +262,10 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     const s = seconds % 60
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
   }
+
+  const formatMoney = (amount: number) => `¥${amount.toFixed(2)}`
+  const hasAdjustedAmount =
+    actualAmount !== null && totalAmount !== null && Math.abs(actualAmount - totalAmount) >= 0.009
 
   // Success state — 倒计时自动跳转订单查询页
   const [redirectCount, setRedirectCount] = useState(3)
@@ -316,6 +340,27 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
             {timeLeft < 0 ? "--:--" : formatTime(timeLeft)}
           </span>
         </div>
+
+        {!isUsdtPayment && actualAmount !== null && (
+          <div className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-muted-foreground">{t("payment.amount")}</span>
+              <span className="text-right text-2xl font-bold text-foreground">{formatMoney(actualAmount)}</span>
+            </div>
+            {hasAdjustedAmount && totalAmount !== null && (
+              <div className="flex items-center justify-between gap-4 border-t border-amber-200/70 pt-3 text-xs text-muted-foreground dark:border-amber-900/40">
+                <span>{t("order.amount")}</span>
+                <span>{formatMoney(totalAmount)}</span>
+              </div>
+            )}
+            <div className="flex items-start gap-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-amber-700 dark:bg-background/10 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                {t("payment.amountExactHint")}
+              </span>
+            </div>
+          </div>
+        )}
 
         {isUsdtPayment ? (
           /* ========== USDT 支付视图（紧凑居中布局） ========== */

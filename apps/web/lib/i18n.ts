@@ -174,6 +174,7 @@ const zh = {
   "payment.alipay": "支付宝",
   "payment.wechat": "微信支付",
   "payment.statusRefreshed": "状态已刷新",
+  "payment.amountExactHint": "请按页面显示金额付款，勿自行修改金额，否则可能无法自动到账。",
   // USDT 支付
   "payment.usdt.amount": "转账金额",
   "payment.usdt.amountHint": "需为实际到账金额",
@@ -741,6 +742,7 @@ const en: Record<keyof typeof zh, string> = {
   "payment.alipay": "Alipay",
   "payment.wechat": "WeChat Pay",
   "payment.statusRefreshed": "Status refreshed",
+  "payment.amountExactHint": "Please pay exactly the amount shown on this page. Do not modify it, or the payment may fail to be credited automatically.",
   // USDT payment
   "payment.usdt.amount": "Transfer Amount",
   "payment.usdt.amountHint": "exact amount required",
