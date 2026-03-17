@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, type DragEvent, type RefObject } from "react"
-import { Plus, Search, Edit, Trash2, Upload, X, AlertCircle, ChevronDown, EyeOff, Eye, KeyRound, Loader2, ImagePlus, GripVertical } from "lucide-react"
+import { useState, useEffect, useCallback, useRef, type RefObject } from "react"
+import { Plus, Search, Edit, Trash2, Upload, X, AlertCircle, ChevronDown, EyeOff, Eye, KeyRound, Loader2, ImagePlus } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { cn, getCurrencySymbol } from "@/lib/utils"
@@ -9,17 +9,7 @@ import { Modal } from "@/components/ui/modal"
 import { useLocale } from "@/lib/context"
 import { adminProductApi, adminCategoryApi, adminCardKeyApi, currencyApi, withMockFallback } from "@/services/api"
 import { mockCategories } from "@/lib/mock-data"
-import type { ProductDetail, Category, ProductSpec, CurrencyItem } from "@/types"
-
-interface FormSpecItem {
-  id?: string
-  name: string
-  price: string
-  sort_order?: number
-}
-
-const normalizeFormSpecs = (specs: FormSpecItem[]) =>
-  specs.map((spec, index) => ({ ...spec, sort_order: index }))
+import type { ProductDetail, Category, CurrencyItem } from "@/types"
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"]
 const ALLOWED_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,.bmp,.svg"
@@ -78,8 +68,7 @@ export default function AdminProductsPage() {
     sort_order: "",
     delivery_type: "AUTO",
   })
-  const [formSpecs, setFormSpecs] = useState<FormSpecItem[]>([])
-  const [draggingSpecIndex, setDraggingSpecIndex] = useState<number | null>(null)
+  const [formSpecs, setFormSpecs] = useState<{ id?: string; name: string; price: string }[]>([])
 
   // Import modal state
   const [importSpecId, setImportSpecId] = useState("")
@@ -170,16 +159,11 @@ export default function AdminProductsPage() {
       sort_order: String(product.sort_order ?? ""),
       delivery_type: product.delivery_type || "AUTO",
     })
-    const specs = normalizeFormSpecs(
-      [...product.specs]
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((s) => ({
-          id: s.id,
-          name: s.name,
-          price: String(s.price),
-          sort_order: s.sort_order ?? 0,
-        }))
-    )
+    const specs = product.specs.map(s => ({
+      id: s.id,
+      name: s.name,
+      price: String(s.price),
+    }))
     setFormSpecs(specs)
     setSpecsEnabled(specs.length > 0)
     setShowModal(true)
@@ -222,54 +206,6 @@ export default function AdminProductsPage() {
     }
   }
 
-  const moveFormSpecs = useCallback((fromIndex: number, toIndex: number) => {
-    setFormSpecs((prev) => {
-      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev
-      const next = [...prev]
-      const [moved] = next.splice(fromIndex, 1)
-      next.splice(toIndex, 0, moved)
-      return normalizeFormSpecs(next)
-    })
-  }, [])
-
-  const ensureSpecCanDelete = useCallback(async (productId: string, spec: Pick<FormSpecItem, "id" | "name">) => {
-    if (!spec.id) return true
-    const stock = await withMockFallback(
-      () => adminCardKeyApi.getStock({ product_id: productId, spec_id: spec.id }),
-      () => []
-    )
-    const hasBoundCardKeys = stock.some((item) => item.total > 0 || item.available > 0 || item.sold > 0 || item.locked > 0)
-    if (hasBoundCardKeys) {
-      toast.error(`规格「${spec.name || "未命名"}」下仍有卡密，请先清空卡密再删除规格`)
-      return false
-    }
-    return true
-  }, [])
-
-  const handleRemoveSpec = useCallback(async (idx: number) => {
-    const targetSpec = formSpecs[idx]
-    if (!targetSpec) return
-    if (targetSpec.id && editingProduct?.id) {
-      const canDelete = await ensureSpecCanDelete(editingProduct.id, targetSpec)
-      if (!canDelete) return
-    }
-    setFormSpecs((prev) => normalizeFormSpecs(prev.filter((_, index) => index !== idx)))
-  }, [editingProduct?.id, ensureSpecCanDelete, formSpecs])
-
-  const handleSpecDragStart = useCallback((index: number) => {
-    setDraggingSpecIndex(index)
-  }, [])
-
-  const handleSpecDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault()
-  }, [])
-
-  const handleSpecDrop = useCallback((index: number) => {
-    if (draggingSpecIndex === null) return
-    moveFormSpecs(draggingSpecIndex, index)
-    setDraggingSpecIndex(null)
-  }, [draggingSpecIndex, moveFormSpecs])
-
   const handleSave = async () => {
     const errors: Record<string, boolean> = {}
     if (!formData.title.trim()) errors.title = true
@@ -288,29 +224,18 @@ export default function AdminProductsPage() {
     }
     setFormErrors({})
 
-    const normalizedSpecs = normalizeFormSpecs(formSpecs)
     if (specsEnabled) {
-      for (const spec of normalizedSpecs) {
+      for (const spec of formSpecs) {
         if (!spec.name.trim()) { toast.error("规格名称不能为空"); return }
         if (!spec.price || parseFloat(spec.price) <= 0) { toast.error(`规格「${spec.name || "未命名"}」价格无效`); return }
-      }
-    }
-
-    const existingSpecs = editingProduct?.specs || []
-    const keepIds = new Set(normalizedSpecs.filter((spec) => spec.id).map((spec) => spec.id!))
-    if (editingProduct?.id) {
-      const removedSpecs = existingSpecs.filter((spec) => !specsEnabled || !keepIds.has(spec.id))
-      for (const oldSpec of removedSpecs) {
-        const canDelete = await ensureSpecCanDelete(editingProduct.id, { id: oldSpec.id, name: oldSpec.name })
-        if (!canDelete) return
       }
     }
 
     setSaving(true)
     try {
       let basePrice = parseFloat(formData.base_price) || 0
-      if (specsEnabled && normalizedSpecs.length > 0) {
-        const specPrices = normalizedSpecs.map((spec) => parseFloat(spec.price)).filter((price) => price > 0)
+      if (specsEnabled && formSpecs.length > 0) {
+        const specPrices = formSpecs.map((spec) => parseFloat(spec.price)).filter((price) => price > 0)
         if (specPrices.length > 0) basePrice = Math.min(...specPrices)
       }
 
@@ -340,22 +265,22 @@ export default function AdminProductsPage() {
       }
 
       if (productId && productId !== "mock-id") {
+        const existingSpecs = editingProduct?.specs || []
         const existingIds = new Set(existingSpecs.map((spec) => spec.id))
         if (specsEnabled) {
           for (const oldSpec of existingSpecs) {
-            if (!keepIds.has(oldSpec.id)) {
+            if (!formSpecs.find((s) => s.id === oldSpec.id)) {
               try { await adminProductApi.deleteSpec(productId, oldSpec.id) } catch { /* ignore */ }
             }
           }
-          for (const [index, spec] of normalizedSpecs.entries()) {
+          for (const spec of formSpecs) {
             if (spec.id && existingIds.has(spec.id)) {
               const old = existingSpecs.find((item) => item.id === spec.id)
-              const nextSortOrder = spec.sort_order ?? index
-              if (old && (old.name !== spec.name || String(old.price) !== spec.price || (old.sort_order ?? index) !== nextSortOrder)) {
-                try { await adminProductApi.updateSpec(productId, spec.id, { name: spec.name, price: parseFloat(spec.price), sort_order: nextSortOrder }) } catch { /* ignore */ }
+              if (old && (old.name !== spec.name || String(old.price) !== spec.price)) {
+                try { await adminProductApi.updateSpec(productId, spec.id, { name: spec.name, price: parseFloat(spec.price) }) } catch { /* ignore */ }
               }
             } else {
-              try { await adminProductApi.addSpec(productId, { name: spec.name, price: parseFloat(spec.price), sort_order: spec.sort_order ?? index }) } catch { /* ignore */ }
+              try { await adminProductApi.addSpec(productId, { name: spec.name, price: parseFloat(spec.price) }) } catch { /* ignore */ }
             }
           }
         } else {
@@ -380,7 +305,6 @@ export default function AdminProductsPage() {
     setEditingProduct(null)
     setFormData({ title: "", description: "", detail_md: "", category_id: "", base_price: "", currency: "CNY", cover_url: "", low_stock_threshold: "10", wholesale_enabled: false, is_enabled: true, initial_sales: "", sort_order: "", delivery_type: "AUTO" })
     setFormSpecs([])
-    setDraggingSpecIndex(null)
     setSpecsEnabled(false)
     setFormErrors({})
   }
@@ -725,7 +649,7 @@ export default function AdminProductsPage() {
                         setSpecsEnabled(false)
                       } else {
                         setSpecsEnabled(true)
-                        if (formSpecs.length === 0) setFormSpecs(normalizeFormSpecs([{ name: "", price: "" }]))
+                        if (formSpecs.length === 0) setFormSpecs([{ name: "", price: "" }])
                       }
                     }}>
                       <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform", specsEnabled && "translate-x-5")} />
@@ -734,30 +658,17 @@ export default function AdminProductsPage() {
                 </div>
                 {specsEnabled && (
                   <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-col gap-2">
-                    <p className="text-xs text-muted-foreground">长按左侧拖拽手柄可调整规格上下顺序，删除已有规格前会先检查卡密库存。</p>
                     {formSpecs.map((spec, idx) => (
                       <div
                         key={spec.id || idx}
-                        draggable
-                        onDragStart={() => handleSpecDragStart(idx)}
-                        onDragOver={handleSpecDragOver}
-                        onDrop={() => handleSpecDrop(idx)}
-                        onDragEnd={() => setDraggingSpecIndex(null)}
-                        className={cn("flex items-center gap-2 rounded-lg border border-transparent bg-background/70 p-2 transition-colors", draggingSpecIndex === idx && "border-primary/40 bg-primary/5")}
+                        className="flex items-center gap-2 rounded-lg bg-background/70 p-2"
                       >
-                        <button
-                          type="button"
-                          className="flex h-9 w-9 shrink-0 cursor-grab items-center justify-center rounded-lg text-muted-foreground active:cursor-grabbing"
-                          title="长按拖拽排序"
-                        >
-                          <GripVertical className="h-4 w-4" />
-                        </button>
                         <input
                           type="text"
                           className="h-9 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           placeholder="规格名称（如：1个月、6个月）"
                           value={spec.name}
-                          onChange={(e) => setFormSpecs((prev) => normalizeFormSpecs(prev.map((item, index) => index === idx ? { ...item, name: e.target.value } : item)))}
+                          onChange={(e) => setFormSpecs((prev) => prev.map((item, index) => index === idx ? { ...item, name: e.target.value } : item))}
                         />
                         <input
                           type="number"
@@ -765,12 +676,12 @@ export default function AdminProductsPage() {
                           className="h-9 w-32 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           placeholder="价格"
                           value={spec.price}
-                          onChange={(e) => setFormSpecs((prev) => normalizeFormSpecs(prev.map((item, index) => index === idx ? { ...item, price: e.target.value } : item)))}
+                          onChange={(e) => setFormSpecs((prev) => prev.map((item, index) => index === idx ? { ...item, price: e.target.value } : item))}
                         />
                         <button
                           type="button"
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          onClick={() => void handleRemoveSpec(idx)}
+                          onClick={() => setFormSpecs((prev) => prev.filter((_, i) => i !== idx))}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -779,7 +690,7 @@ export default function AdminProductsPage() {
                     <button
                       type="button"
                       className="flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                      onClick={() => setFormSpecs((prev) => normalizeFormSpecs([...prev, { name: "", price: "" }]))}
+                      onClick={() => setFormSpecs((prev) => [...prev, { name: "", price: "" }])}
                     >
                       <Plus className="h-3.5 w-3.5" />
                       添加规格

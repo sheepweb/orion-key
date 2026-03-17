@@ -1,48 +1,26 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ShoppingBag, Mail, CreditCard, Lock, AlertTriangle, ExternalLink, X } from "lucide-react"
+import { ShoppingBag, Mail, CreditCard, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useCart } from "@/lib/context"
 import { orderApi, paymentApi, withMockFallback, getApiErrorMessage } from "@/services/api"
 import { mockPaymentChannels, mockCreateOrder } from "@/lib/mock-data"
 import { validateEmail, generateIdempotencyKey, getCurrencySymbol, detectPaymentDevice, isMobileDevice } from "@/lib/utils"
 import { PaymentSelector } from "@/components/shared/payment-selector"
-import { Modal } from "@/components/ui/modal"
 import type { PaymentChannelItem } from "@/types"
 
 export default function CheckoutPage() {
   const { t } = useLocale()
   const router = useRouter()
-  const { items, totalAmount, itemCount, refreshCart } = useCart()
+  const { items, totalAmount, refreshCart } = useCart()
 
   const [email, setEmail] = useState("")
   const [channels, setChannels] = useState<PaymentChannelItem[]>([])
   const [selectedPayment, setSelectedPayment] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [qiuPayConfirm, setQiuPayConfirm] = useState<{
-    orderId: string
-    payUrlH5: string
-    actualAmount: number
-    totalAmount: number
-    currency: string
-  } | null>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
-  const selectedChannel = channels.find((channel) => channel.channel_code === selectedPayment)
-  const normalizedSelectedPayment = selectedPayment.toLowerCase()
-  const normalizedProviderType = selectedChannel?.provider_type?.toLowerCase()
-  const isQiuPayChannel = normalizedProviderType === "qiupay" || normalizedSelectedPayment.includes("qiupay")
-
-  const handleContinueQiuPay = useCallback(() => {
-    if (!qiuPayConfirm) return
-    sessionStorage.setItem(`pay_redirected_${qiuPayConfirm.orderId}`, "1")
-    window.location.href = qiuPayConfirm.payUrlH5
-  }, [qiuPayConfirm])
-
-  const handleCloseQiuPayConfirm = useCallback(() => {
-    setQiuPayConfirm(null)
-  }, [])
 
   // Fetch payment channels on mount
   useEffect(() => {
@@ -100,13 +78,7 @@ export default function CheckoutPage() {
       toast.success(t("checkout.processingOrder"))
       const payUrlH5 = result.payment.pay_url || ""
       const qr = result.payment.qrcode_url || result.payment.payment_url || ""
-      const actualAmount = typeof result.order.actual_amount === "number" ? result.order.actual_amount : result.order.total_amount
-      const orderTotalAmount = typeof result.order.total_amount === "number" ? result.order.total_amount : actualAmount
-      const orderCurrency = items[0]?.currency || "CNY"
       let payUrl = `/pay/${result.payment.order_id}?method=${selectedPayment}`
-      if (selectedChannel?.provider_type) {
-        payUrl += `&provider=${encodeURIComponent(selectedChannel.provider_type)}`
-      }
       if (qr) payUrl += `&qr=${encodeURIComponent(qr)}`
       if (payUrlH5) payUrl += `&payurl=${encodeURIComponent(payUrlH5)}`
       // USDT 支付额外参数
@@ -119,17 +91,7 @@ export default function CheckoutPage() {
       // 导致支付宝 H5 session token 过期（"会话超时"）
       // 微信支付的 jspay 走 JSAPI（需微信浏览器），普通浏览器不能跳转，只能到 pay 页展示二维码
       const isWechat = ["wechat", "wxpay"].includes(selectedPayment.toLowerCase())
-      if (isMobileDevice() && payUrlH5 && isQiuPayChannel) {
-        setQiuPayConfirm({
-          orderId: result.payment.order_id,
-          payUrlH5,
-          actualAmount,
-          totalAmount: orderTotalAmount,
-          currency: orderCurrency,
-        })
-        return
-      }
-      if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat && !isQiuPayChannel) {
+      if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat) {
         sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
         window.location.href = payUrlH5
         return
@@ -143,166 +105,102 @@ export default function CheckoutPage() {
   }
 
   return (
-    <>
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6 flex items-center gap-3">
-          <ShoppingBag className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">{t("checkout.title")}</h1>
-        </div>
-
-        <div className="space-y-6">
-          {/* Order summary */}
-          <div className="rounded-lg border border-border bg-background p-6">
-            <h2 className="mb-4 text-base font-semibold text-foreground">{t("checkout.summary")}</h2>
-            <div className="space-y-3">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {item.product_title}
-                    {item.spec_name ? ` (${item.spec_name})` : ""}
-                    {" x"}{item.quantity}
-                  </span>
-                  <span className="font-medium text-foreground">{getCurrencySymbol(item.currency)}{item.subtotal.toFixed(2)}</span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between border-t border-border pt-3">
-                <span className="text-base font-medium text-foreground">{t("checkout.totalAmount")}</span>
-                <span className="text-2xl font-bold text-primary">
-                  {getCurrencySymbol(items[0]?.currency)}{totalAmount.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="rounded-lg border border-border bg-background p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
-              <h2 className="text-base font-semibold text-foreground">
-                {t("product.email")}
-              </h2>
-            </div>
-            <input
-              ref={emailInputRef}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("product.emailPlaceholder")}
-              className="mb-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("product.emailFullHint")}
-            </p>
-          </div>
-
-          {/* Payment method */}
-          <div className="rounded-lg border border-border bg-background p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              <h2 className="text-base font-semibold text-foreground">
-                {t("product.paymentMethod")}
-              </h2>
-            </div>
-            <PaymentSelector
-              channels={channels}
-              selected={selectedPayment}
-              onSelect={setSelectedPayment}
-            />
-            {selectedPayment.startsWith("usdt_") && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t("payment.usdt.rateHint")}
-              </p>
-            )}
-          </div>
-
-          {/* Security notice */}
-          <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
-            <Lock className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              <p className="mb-1 font-medium text-foreground">{t("checkout.securePayment")}</p>
-              <p>{t("checkout.securePaymentDesc")}</p>
-            </div>
-          </div>
-
-          {/* Confirm button */}
-          <button
-            onClick={handleConfirmOrder}
-            disabled={submitting || items.length === 0}
-            className="scheme-glow w-full rounded-lg bg-primary py-3.5 text-base font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {submitting ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                {t("checkout.processingOrder")}
-              </span>
-            ) : (
-              <>{t("checkout.confirmOrder")} {getCurrencySymbol(items[0]?.currency)}{totalAmount.toFixed(2)}</>
-            )}
-          </button>
-        </div>
+    <div className="mx-auto max-w-2xl">
+      <div className="mb-6 flex items-center gap-3">
+        <ShoppingBag className="h-6 w-6 text-primary" />
+        <h1 className="text-2xl font-bold text-foreground">{t("checkout.title")}</h1>
       </div>
 
-      <Modal open={!!qiuPayConfirm} onClose={handleCloseQiuPayConfirm} className="max-w-md">
-        {qiuPayConfirm && (
-          <>
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">QiuPay 支付前请先确认金额</h2>
-                <p className="mt-1 text-xs text-muted-foreground">订单号：{qiuPayConfirm.orderId}</p>
+      <div className="space-y-6">
+        {/* Order summary */}
+        <div className="rounded-lg border border-border bg-background p-6">
+          <h2 className="mb-4 text-base font-semibold text-foreground">{t("checkout.summary")}</h2>
+          <div className="space-y-3">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {item.product_title}
+                  {item.spec_name ? ` (${item.spec_name})` : ""}
+                  {" x"}{item.quantity}
+                </span>
+                <span className="font-medium text-foreground">{getCurrencySymbol(item.currency)}{item.subtotal.toFixed(2)}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleCloseQiuPayConfirm}
-                className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            ))}
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="text-base font-medium text-foreground">{t("checkout.totalAmount")}</span>
+              <span className="text-2xl font-bold text-primary">
+                {getCurrencySymbol(items[0]?.currency)}{totalAmount.toFixed(2)}
+              </span>
             </div>
+          </div>
+        </div>
 
-            <div className="space-y-4 px-5 py-4">
-              <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/20">
-                <p className="text-xs text-muted-foreground">本次实际应付金额</p>
-                <p className="mt-2 text-3xl font-bold text-foreground">
-                  {getCurrencySymbol(qiuPayConfirm.currency)}{qiuPayConfirm.actualAmount.toFixed(2)}
-                </p>
-                {Math.abs(qiuPayConfirm.actualAmount - qiuPayConfirm.totalAmount) >= 0.009 && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    原订单金额：{getCurrencySymbol(qiuPayConfirm.currency)}{qiuPayConfirm.totalAmount.toFixed(2)}
-                  </p>
-                )}
-              </div>
+        {/* Email */}
+        <div className="rounded-lg border border-border bg-background p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold text-foreground">
+              {t("product.email")}
+            </h2>
+          </div>
+          <input
+            ref={emailInputRef}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t("product.emailPlaceholder")}
+            className="mb-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("product.emailFullHint")}
+          </p>
+        </div>
 
-              <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <div className="space-y-1">
-                  <p className="font-medium text-foreground">QiuPay 渠道金额可能浮动</p>
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    请以上方显示的实际应付金额为准，再前往支付宝完成付款；若支付金额不一致，可能导致回调失败或订单无法正确到账。
-                  </p>
-                </div>
-              </div>
-            </div>
+        {/* Payment method */}
+        <div className="rounded-lg border border-border bg-background p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold text-foreground">
+              {t("product.paymentMethod")}
+            </h2>
+          </div>
+          <PaymentSelector
+            channels={channels}
+            selected={selectedPayment}
+            onSelect={setSelectedPayment}
+          />
+          {selectedPayment.startsWith("usdt_") && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("payment.usdt.rateHint")}
+            </p>
+          )}
+        </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-border px-5 py-4 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={handleCloseQiuPayConfirm}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-              >
-                暂不支付
-              </button>
-              <button
-                type="button"
-                onClick={handleContinueQiuPay}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <ExternalLink className="h-4 w-4" />
-                继续支付
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
-    </>
+        {/* Security notice */}
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
+          <Lock className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className="text-xs text-muted-foreground">
+            <p className="mb-1 font-medium text-foreground">{t("checkout.securePayment")}</p>
+            <p>{t("checkout.securePaymentDesc")}</p>
+          </div>
+        </div>
+
+        {/* Confirm button */}
+        <button
+          onClick={handleConfirmOrder}
+          disabled={submitting || items.length === 0}
+          className="scheme-glow w-full rounded-lg bg-primary py-3.5 text-base font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:pointer-events-none disabled:opacity-50"
+        >
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+              {t("checkout.processingOrder")}
+            </span>
+          ) : (
+            <>{t("checkout.confirmOrder")} {getCurrencySymbol(items[0]?.currency)}{totalAmount.toFixed(2)}</>
+          )}
+        </button>
+      </div>
+    </div>
   )
 }

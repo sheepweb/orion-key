@@ -29,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Image */}
       <Link
         href={productUrl}
-        className="relative block aspect-[4/2.7] cursor-pointer bg-muted sm:aspect-[4/3.2]"
+        className="relative block aspect-[4/3.2] cursor-pointer bg-muted"
       >
         {product.cover_url ? (
           <img
@@ -48,7 +48,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         {/* Title */}
         <Link href={productUrl}>
-          <h3 className="truncate cursor-pointer text-[15px] font-bold leading-snug tracking-tight text-card-foreground sm:line-clamp-2 sm:whitespace-normal">
+          <h3 className="line-clamp-2 cursor-pointer text-[15px] font-bold leading-snug tracking-tight text-card-foreground">
             {product.title}
           </h3>
         </Link>
