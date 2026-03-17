@@ -4,7 +4,7 @@ import { useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Zap, Minus, Plus, ShoppingCart, Package, TrendingUp } from "lucide-react"
 import { toast } from "sonner"
-import { useLocale, useAuth, useCart } from "@/lib/context"
+import { useLocale, useCart } from "@/lib/context"
 import { orderApi, withMockFallback, getApiErrorMessage } from "@/services/api"
 import { mockCreateOrder } from "@/lib/mock-data"
 import { cn, validateEmail, generateIdempotencyKey, getCurrencySymbol, detectPaymentDevice, isMobileDevice } from "@/lib/utils"
@@ -19,7 +19,6 @@ interface ProductActionsProps {
 
 export function ProductActions({ product, channels }: ProductActionsProps) {
   const { t } = useLocale()
-  const { isLoggedIn } = useAuth()
   const { addItem } = useCart()
   const router = useRouter()
   const emailInputRef = useRef<HTMLInputElement>(null)
@@ -37,6 +36,8 @@ export function ProductActions({ product, channels }: ProductActionsProps) {
   )
   const [submitting, setSubmitting] = useState(false)
   const [qiupayPrompt, setQiupayPrompt] = useState<string | null>(null)
+  const [qiupayAmount, setQiupayAmount] = useState("")
+  const [pendingPayUrl, setPendingPayUrl] = useState<string | null>(null)
 
   const currentPrice = selectedSpec ? selectedSpec.price : product.base_price
   const totalPrice = currentPrice * quantity
@@ -51,6 +52,15 @@ export function ProductActions({ product, channels }: ProductActionsProps) {
     } else {
       setEmailError("")
     }
+  }
+
+  const handleContinueQiupay = () => {
+    if (!pendingPayUrl) return
+    const targetUrl = pendingPayUrl
+    setQiupayPrompt(null)
+    setQiupayAmount("")
+    setPendingPayUrl(null)
+    window.location.href = targetUrl
   }
 
   const handleBuyNow = async () => {
@@ -108,12 +118,12 @@ export function ProductActions({ product, channels }: ProductActionsProps) {
       const isWechat = ["wechat", "wxpay"].includes(selectedPayment.toLowerCase())
       if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat) {
         if (selectedPayment === "qiupay_alipay") {
-          const amount = Number(result.order.actual_amount ?? totalPrice).toFixed(2)
-          setQiupayPrompt(
-            t("payment.qiupayAmountConfirmToast").replace("{amount}", `${getCurrencySymbol(product.currency)}${amount}`)
-          )
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          setQiupayPrompt(null)
+          const amount = `${getCurrencySymbol(product.currency)}${Number(result.order.actual_amount ?? totalPrice).toFixed(2)}`
+          setQiupayPrompt(t("payment.qiupayAmountConfirmToast"))
+          setQiupayAmount(amount)
+          setPendingPayUrl(payUrlH5)
+          sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
+          return
         }
         sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
         window.location.href = payUrlH5
@@ -351,7 +361,14 @@ export function ProductActions({ product, channels }: ProductActionsProps) {
           </button>
         </div>
       </div>
-      {qiupayPrompt && <PaymentAmountOverlay message={qiupayPrompt} />}
+      {qiupayPrompt && (
+        <PaymentAmountOverlay
+          description={qiupayPrompt}
+          amount={qiupayAmount}
+          confirmText={t("payment.continuePay")}
+          onConfirm={handleContinueQiupay}
+        />
+      )}
     </div>
   )
 }

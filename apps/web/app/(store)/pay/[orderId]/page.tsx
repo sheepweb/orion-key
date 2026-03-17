@@ -50,6 +50,8 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   // 标记是否已经跳转过支付 App（从 sessionStorage 初始化，防止返回后文案错误）
   const [hasRedirected, setHasRedirected] = useState(false)
   const [qiupayPrompt, setQiupayPrompt] = useState<string | null>(null)
+  const [qiupayAmount, setQiupayAmount] = useState("")
+  const [pendingPayUrl, setPendingPayUrl] = useState<string | null>(null)
 
   const isMobile = isMobileDevice()
 
@@ -209,6 +211,15 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     }
   }, [refreshCooldown, isRefreshing, orderId, t])
 
+  const handleContinueQiupay = useCallback(() => {
+    if (!pendingPayUrl) return
+    const targetUrl = pendingPayUrl
+    setQiupayPrompt(null)
+    setQiupayAmount("")
+    setPendingPayUrl(null)
+    window.location.href = targetUrl
+  }, [pendingPayUrl])
+
   // 重新发起支付（移动端重试）
   const handleRetryPayment = useCallback(async () => {
     if (retrying) return
@@ -224,9 +235,11 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
       if (isMobile && result.pay_url && !isWechatMobile) {
         if (paymentMethod === "qiupay_alipay") {
           const amount = formatMoney(actualAmount ?? totalAmount ?? 0)
-          setQiupayPrompt(t("payment.qiupayAmountConfirmToast").replace("{amount}", amount))
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          setQiupayPrompt(null)
+          setQiupayPrompt(t("payment.qiupayAmountConfirmToast"))
+          setQiupayAmount(amount)
+          setPendingPayUrl(result.pay_url)
+          sessionStorage.removeItem(`pay_redirected_${orderId}`)
+          return
         }
         // 清除跳转标记，允许重新跳转（微信走 JSAPI 不能跳转，只刷新二维码）
         sessionStorage.removeItem(`pay_redirected_${orderId}`)
@@ -619,7 +632,14 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
           </div>
         )}
       </div>
-      {qiupayPrompt && <PaymentAmountOverlay message={qiupayPrompt} />}
+      {qiupayPrompt && (
+        <PaymentAmountOverlay
+          description={qiupayPrompt}
+          amount={qiupayAmount}
+          confirmText={t("payment.continuePay")}
+          onConfirm={handleContinueQiupay}
+        />
+      )}
     </div>
   )
 }

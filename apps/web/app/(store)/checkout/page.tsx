@@ -22,6 +22,8 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [qiupayPrompt, setQiupayPrompt] = useState<string | null>(null)
+  const [qiupayAmount, setQiupayAmount] = useState("")
+  const [pendingPayUrl, setPendingPayUrl] = useState<string | null>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch payment channels on mount
@@ -47,6 +49,15 @@ export default function CheckoutPage() {
     fetchChannels()
     return () => { cancelled = true }
   }, [])
+
+  const handleContinueQiupay = () => {
+    if (!pendingPayUrl) return
+    const targetUrl = pendingPayUrl
+    setQiupayPrompt(null)
+    setQiupayAmount("")
+    setPendingPayUrl(null)
+    window.location.href = targetUrl
+  }
 
   const handleConfirmOrder = async () => {
     if (!email.trim()) {
@@ -95,12 +106,12 @@ export default function CheckoutPage() {
       const isWechat = ["wechat", "wxpay"].includes(selectedPayment.toLowerCase())
       if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat) {
         if (selectedPayment === "qiupay_alipay") {
-          const amount = Number(result.order.actual_amount ?? totalAmount).toFixed(2)
-          setQiupayPrompt(
-            t("payment.qiupayAmountConfirmToast").replace("{amount}", `${getCurrencySymbol(items[0]?.currency)}${amount}`)
-          )
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          setQiupayPrompt(null)
+          const amount = `${getCurrencySymbol(items[0]?.currency)}${Number(result.order.actual_amount ?? totalAmount).toFixed(2)}`
+          setQiupayPrompt(t("payment.qiupayAmountConfirmToast"))
+          setQiupayAmount(amount)
+          setPendingPayUrl(payUrlH5)
+          sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
+          return
         }
         sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
         window.location.href = payUrlH5
@@ -211,7 +222,14 @@ export default function CheckoutPage() {
           )}
         </button>
       </div>
-      {qiupayPrompt && <PaymentAmountOverlay message={qiupayPrompt} />}
+      {qiupayPrompt && (
+        <PaymentAmountOverlay
+          description={qiupayPrompt}
+          amount={qiupayAmount}
+          confirmText={t("payment.continuePay")}
+          onConfirm={handleContinueQiupay}
+        />
+      )}
     </div>
   )
 }
