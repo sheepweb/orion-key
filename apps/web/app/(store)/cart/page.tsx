@@ -70,10 +70,10 @@ export default function CartPage() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 transition-colors hover:border-muted-foreground/20 hover:shadow-sm sm:gap-4 sm:p-4"
+            className="flex items-center gap-2.5 rounded-lg border border-border bg-background p-3 transition-colors hover:border-muted-foreground/20 hover:shadow-sm sm:gap-4 sm:p-4"
           >
             {/* Product Image */}
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted sm:h-20 sm:w-20">
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted sm:h-20 sm:w-20">
               {item.cover_url ? (
                 <img
                   src={item.cover_url || "/placeholder.svg"}
@@ -91,15 +91,15 @@ export default function CartPage() {
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <Link
                 href={`/product/${item.product_id}`}
-                className="truncate text-sm font-medium text-card-foreground hover:text-primary transition-colors"
+                className="truncate text-sm font-medium text-card-foreground transition-colors hover:text-primary"
               >
                 {item.product_title}
               </Link>
               {item.spec_name && (
-                <span className="text-xs text-muted-foreground">{item.spec_name}</span>
+                <span className="truncate text-xs text-muted-foreground">{item.spec_name}</span>
               )}
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-foreground">
+              <div className="flex items-center gap-2.5">
+                <span className="whitespace-nowrap text-sm font-semibold text-foreground">
                   {"\u00A5"}{item.unit_price.toFixed(2)}
                 </span>
 
@@ -124,14 +124,14 @@ export default function CartPage() {
                   </button>
                 </div>
                 {item.stock_available != null && item.quantity > item.stock_available && (
-                  <p className="text-xs text-destructive">{t("product.stockInsufficient")}</p>
+                  <p className="truncate text-xs text-destructive">{t("product.stockInsufficient")}</p>
                 )}
               </div>
             </div>
 
             {/* Subtotal & Remove */}
-            <div className="flex flex-col items-end gap-2">
-              <span className="text-sm font-bold text-foreground">
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <span className="whitespace-nowrap text-sm font-bold text-foreground">
                 {"\u00A5"}{item.subtotal.toFixed(2)}
               </span>
               <button

@@ -53,6 +53,8 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   const isMobile = isMobileDevice()
 
   const paymentMethod = searchParams.get("method") || "alipay"
+  const paymentProvider = searchParams.get("provider") || ""
+  const isQiuPayPayment = paymentProvider === "qiupay"
   const paymentMethodName = getPaymentLabel(paymentMethod, t)
   const scanHint = getPaymentScanHint(paymentMethod, t)
   const brandColor = getPaymentBrandColor(paymentMethod)
@@ -112,7 +114,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   // H5 自动跳转（移动端 + 有 payUrl + PENDING 状态 + 未跳转过 + 非微信）
   // 微信 jspay 走 JSAPI（需微信浏览器），普通浏览器不能 H5 跳转，只能扫码
   useEffect(() => {
-    if (!isMobile || !payUrlH5 || status !== "PENDING" || isUsdtPayment || isWechatMobile) return
+    if (!isMobile || !payUrlH5 || status !== "PENDING" || isUsdtPayment || isWechatMobile || isQiuPayPayment) return
     const storageKey = `pay_redirected_${orderId}`
     if (sessionStorage.getItem(storageKey)) {
       setHasRedirected(true)
@@ -121,7 +123,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     sessionStorage.setItem(storageKey, "1")
     setHasRedirected(true)
     window.location.href = payUrlH5
-  }, [isMobile, payUrlH5, status, orderId, isUsdtPayment, isWechatMobile])
+  }, [isMobile, payUrlH5, status, orderId, isUsdtPayment, isWechatMobile, isQiuPayPayment])
 
   // Countdown timer — 仅在服务端返回真实倒计时后才开始递减
   useEffect(() => {
@@ -220,7 +222,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
       if (result.qrcode_url) setQrcodeUrl(result.qrcode_url)
       else if (result.payment_url) setQrcodeUrl(result.payment_url)
 
-      if (isMobile && result.pay_url && !isWechatMobile) {
+      if (isMobile && result.pay_url && !isWechatMobile && !isQiuPayPayment) {
         // 清除跳转标记，允许重新跳转（微信走 JSAPI 不能跳转，只刷新二维码）
         sessionStorage.removeItem(`pay_redirected_${orderId}`)
         window.location.href = result.pay_url
@@ -233,7 +235,14 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     } finally {
       setRetrying(false)
     }
-  }, [retrying, orderId, isMobile, t])
+  }, [retrying, orderId, isMobile, isWechatMobile, isQiuPayPayment, t])
+
+  const handleContinueToPay = useCallback(() => {
+    if (!payUrlH5) return
+    sessionStorage.setItem(`pay_redirected_${orderId}`, "1")
+    setHasRedirected(true)
+    window.location.href = payUrlH5
+  }, [payUrlH5, orderId])
 
   const copyToClipboard = useCallback((text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -342,24 +351,49 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
         </div>
 
         {!isUsdtPayment && actualAmount !== null && (
-          <div className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
-            <div className="flex items-start justify-between gap-4">
-              <span className="text-muted-foreground">{t("payment.amount")}</span>
-              <span className="text-right text-2xl font-bold text-foreground">{formatMoney(actualAmount)}</span>
+          <>
+            <div className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-muted-foreground">{t("payment.amount")}</span>
+                <span className="text-right text-2xl font-bold text-foreground">{formatMoney(actualAmount)}</span>
+              </div>
+              {hasAdjustedAmount && totalAmount !== null && (
+                <div className="flex items-center justify-between gap-4 border-t border-amber-200/70 pt-3 text-xs text-muted-foreground dark:border-amber-900/40">
+                  <span>{t("order.amount")}</span>
+                  <span>{formatMoney(totalAmount)}</span>
+                </div>
+              )}
+              <div className="flex items-start gap-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-amber-700 dark:bg-background/10 dark:text-amber-200">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {t("payment.amountExactHint")}
+                </span>
+              </div>
             </div>
-            {hasAdjustedAmount && totalAmount !== null && (
-              <div className="flex items-center justify-between gap-4 border-t border-amber-200/70 pt-3 text-xs text-muted-foreground dark:border-amber-900/40">
-                <span>{t("order.amount")}</span>
-                <span>{formatMoney(totalAmount)}</span>
+
+            {isQiuPayPayment && (
+              <div className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm shadow-sm">
+                <div className="flex items-start gap-2 text-foreground">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">QiuPay 支付前请先确认金额</p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      QiuPay 渠道金额可能浮动，请以上方显示的“应付金额”为准，再跳转支付宝完成支付；若支付金额不一致，可能导致回调失败。
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleContinueToPay}
+                  disabled={!payUrlH5 || actualAmount === null}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {actualAmount === null ? "正在获取应付金额..." : "确认金额后前往支付宝"}
+                </button>
               </div>
             )}
-            <div className="flex items-start gap-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-amber-700 dark:bg-background/10 dark:text-amber-200">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>
-                {t("payment.amountExactHint")}
-              </span>
-            </div>
-          </div>
+          </>
         )}
 
         {isUsdtPayment ? (
@@ -506,8 +540,12 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
               <Smartphone className="h-8 w-8 text-white/80" />
             </div>
 
-            {/* 状态提示：未跳转过 → "正在跳转..."；已跳转返回 → "如已完成支付..." */}
-            {!hasRedirected ? (
+            {/* 状态提示：QiuPay 先确认金额；其他渠道维持自动跳转提示 */}
+            {isQiuPayPayment ? (
+              <p className="text-center text-sm text-muted-foreground">
+                请先确认上方应付金额，再点击“确认金额后前往支付宝”。
+              </p>
+            ) : !hasRedirected ? (
               <p className="animate-pulse text-sm text-primary">{t("payment.redirectingToPay")}</p>
             ) : (
               <p className="text-sm text-muted-foreground">{t("payment.returnedFromPay")}</p>

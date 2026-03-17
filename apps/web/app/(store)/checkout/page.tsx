@@ -21,6 +21,8 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const emailInputRef = useRef<HTMLInputElement>(null)
+  const selectedChannel = channels.find((channel) => channel.channel_code === selectedPayment)
+  const isQiuPayChannel = selectedChannel?.provider_type === "qiupay"
 
   // Fetch payment channels on mount
   useEffect(() => {
@@ -79,6 +81,9 @@ export default function CheckoutPage() {
       const payUrlH5 = result.payment.pay_url || ""
       const qr = result.payment.qrcode_url || result.payment.payment_url || ""
       let payUrl = `/pay/${result.payment.order_id}?method=${selectedPayment}`
+      if (selectedChannel?.provider_type) {
+        payUrl += `&provider=${encodeURIComponent(selectedChannel.provider_type)}`
+      }
       if (qr) payUrl += `&qr=${encodeURIComponent(qr)}`
       if (payUrlH5) payUrl += `&payurl=${encodeURIComponent(payUrlH5)}`
       // USDT 支付额外参数
@@ -91,7 +96,7 @@ export default function CheckoutPage() {
       // 导致支付宝 H5 session token 过期（"会话超时"）
       // 微信支付的 jspay 走 JSAPI（需微信浏览器），普通浏览器不能跳转，只能到 pay 页展示二维码
       const isWechat = ["wechat", "wxpay"].includes(selectedPayment.toLowerCase())
-      if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat) {
+      if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat && !isQiuPayChannel) {
         sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
         window.location.href = payUrlH5
         return

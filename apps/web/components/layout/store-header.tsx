@@ -236,10 +236,10 @@ export function StoreHeader({ siteName }: StoreHeaderProps) {
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="inline-flex h-9 max-w-[7rem] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">{user?.username}</span>
+                <User className="h-4 w-4 shrink-0" />
+                <span className="hidden truncate whitespace-nowrap sm:inline">{user?.username}</span>
               </button>
               {userMenuOpen && (
                 <>
@@ -265,7 +265,7 @@ export function StoreHeader({ siteName }: StoreHeaderProps) {
               )}
             </div>
           ) : (
-            <Link href="/login" className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+            <Link href="/login" className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:px-4">
               {t("nav.login")}
             </Link>
           )}
