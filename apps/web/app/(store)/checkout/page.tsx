@@ -30,7 +30,9 @@ export default function CheckoutPage() {
   } | null>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
   const selectedChannel = channels.find((channel) => channel.channel_code === selectedPayment)
-  const isQiuPayChannel = selectedChannel?.provider_type === "qiupay"
+  const normalizedSelectedPayment = selectedPayment.toLowerCase()
+  const normalizedProviderType = selectedChannel?.provider_type?.toLowerCase()
+  const isQiuPayChannel = normalizedProviderType === "qiupay" || normalizedSelectedPayment.includes("qiupay")
 
   const handleContinueQiuPay = useCallback(() => {
     if (!qiuPayConfirm) return
