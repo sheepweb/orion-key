@@ -24,6 +24,7 @@ import { orderApi, withMockFallback } from "@/services/api"
 import type { OrderStatus } from "@/types"
 import { cn, detectPaymentDevice, isMobileDevice } from "@/lib/utils"
 import { PaymentIcon, getPaymentLabel, getPaymentBrandColor, getPaymentScanHint } from "@/components/shared/payment-icon"
+import { PaymentAmountOverlay } from "@/components/shared/payment-amount-overlay"
 
 const POLL_INTERVAL = 3000 // 3 seconds
 const MANUAL_REFRESH_COOLDOWN = 10 // 10 seconds
@@ -48,6 +49,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   const [retrying, setRetrying] = useState(false)
   // 标记是否已经跳转过支付 App（从 sessionStorage 初始化，防止返回后文案错误）
   const [hasRedirected, setHasRedirected] = useState(false)
+  const [qiupayPrompt, setQiupayPrompt] = useState<string | null>(null)
 
   const isMobile = isMobileDevice()
 
@@ -220,6 +222,12 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
       else if (result.payment_url) setQrcodeUrl(result.payment_url)
 
       if (isMobile && result.pay_url && !isWechatMobile) {
+        if (paymentMethod === "qiupay_alipay") {
+          const amount = formatMoney(actualAmount ?? totalAmount ?? 0)
+          setQiupayPrompt(t("payment.qiupayAmountConfirmToast").replace("{amount}", amount))
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          setQiupayPrompt(null)
+        }
         // 清除跳转标记，允许重新跳转（微信走 JSAPI 不能跳转，只刷新二维码）
         sessionStorage.removeItem(`pay_redirected_${orderId}`)
         window.location.href = result.pay_url
@@ -232,7 +240,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     } finally {
       setRetrying(false)
     }
-  }, [retrying, orderId, isMobile, isWechatMobile, t])
+  }, [retrying, orderId, isMobile, isWechatMobile, paymentMethod, actualAmount, totalAmount, t])
 
   const copyToClipboard = useCallback((text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -611,6 +619,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
           </div>
         )}
       </div>
+      {qiupayPrompt && <PaymentAmountOverlay message={qiupayPrompt} />}
     </div>
   )
 }

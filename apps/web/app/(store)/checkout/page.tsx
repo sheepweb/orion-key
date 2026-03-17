@@ -9,6 +9,7 @@ import { orderApi, paymentApi, withMockFallback, getApiErrorMessage } from "@/se
 import { mockPaymentChannels, mockCreateOrder } from "@/lib/mock-data"
 import { validateEmail, generateIdempotencyKey, getCurrencySymbol, detectPaymentDevice, isMobileDevice } from "@/lib/utils"
 import { PaymentSelector } from "@/components/shared/payment-selector"
+import { PaymentAmountOverlay } from "@/components/shared/payment-amount-overlay"
 import type { PaymentChannelItem } from "@/types"
 
 export default function CheckoutPage() {
@@ -20,6 +21,7 @@ export default function CheckoutPage() {
   const [channels, setChannels] = useState<PaymentChannelItem[]>([])
   const [selectedPayment, setSelectedPayment] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [qiupayPrompt, setQiupayPrompt] = useState<string | null>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch payment channels on mount
@@ -92,6 +94,14 @@ export default function CheckoutPage() {
       // 微信支付的 jspay 走 JSAPI（需微信浏览器），普通浏览器不能跳转，只能到 pay 页展示二维码
       const isWechat = ["wechat", "wxpay"].includes(selectedPayment.toLowerCase())
       if (isMobileDevice() && payUrlH5 && !selectedPayment.startsWith("usdt_") && !isWechat) {
+        if (selectedPayment === "qiupay_alipay") {
+          const amount = Number(result.order.actual_amount ?? totalAmount).toFixed(2)
+          setQiupayPrompt(
+            t("payment.qiupayAmountConfirmToast").replace("{amount}", `${getCurrencySymbol(items[0]?.currency)}${amount}`)
+          )
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          setQiupayPrompt(null)
+        }
         sessionStorage.setItem(`pay_redirected_${result.payment.order_id}`, "1")
         window.location.href = payUrlH5
         return
@@ -201,6 +211,7 @@ export default function CheckoutPage() {
           )}
         </button>
       </div>
+      {qiupayPrompt && <PaymentAmountOverlay message={qiupayPrompt} />}
     </div>
   )
 }
