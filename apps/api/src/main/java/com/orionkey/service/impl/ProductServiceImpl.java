@@ -14,6 +14,8 @@ import com.orionkey.repository.ProductSpecRepository;
 import com.orionkey.repository.WholesaleRuleRepository;
 import com.orionkey.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,6 +29,9 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
+    private static final String CACHE_PRODUCT_LIST = "productPublicList";
+    private static final String CACHE_PRODUCT_DETAIL = "productDetail";
+
     private final ProductRepository productRepository;
     private final ProductSpecRepository productSpecRepository;
     private final WholesaleRuleRepository wholesaleRuleRepository;
@@ -34,6 +39,7 @@ public class ProductServiceImpl implements ProductService {
     private final OrderItemRepository orderItemRepository;
 
     @Override
+    @Cacheable(cacheNames = CACHE_PRODUCT_LIST, key = "#categoryId + '|' + #keyword + '|' + #page + '|' + #pageSize", condition = "@cacheSwitchState.enabled")
     public PageResult<?> listPublicProducts(UUID categoryId, String keyword, int page, int pageSize) {
         var pageable = PageRequest.of(page - 1, pageSize,
                 Sort.by("sortOrder").ascending().and(Sort.by("createdAt").descending()));
@@ -48,6 +54,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(cacheNames = CACHE_PRODUCT_DETAIL, key = "#id", condition = "@cacheSwitchState.enabled")
     public Map<String, Object> getProductDetail(UUID id) {
         Product product = productRepository.findById(id)
                 .filter(p -> p.getIsDeleted() == 0 && p.isEnabled())
@@ -93,6 +100,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public Map<String, Object> createProduct(Map<String, Object> req) {
         Product product = new Product();
         product.setTitle((String) req.get("title"));
@@ -114,6 +122,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public void updateProduct(UUID id, Map<String, Object> req) {
         Product product = productRepository.findById(id)
                 .filter(p -> p.getIsDeleted() == 0)
@@ -136,6 +145,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public void deleteProduct(UUID id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "商品不存在"));
@@ -151,6 +161,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public void createSpec(UUID productId, Map<String, Object> req) {
         productRepository.findById(productId)
                 .filter(p -> p.getIsDeleted() == 0)
@@ -166,6 +177,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public void updateSpec(UUID productId, UUID specId, Map<String, Object> req) {
         ProductSpec spec = productSpecRepository.findById(specId)
                 .filter(s -> s.getProductId().equals(productId) && s.getIsDeleted() == 0)
@@ -179,6 +191,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public void deleteSpec(UUID productId, UUID specId) {
         ProductSpec spec = productSpecRepository.findById(specId)
                 .filter(s -> s.getProductId().equals(productId))
@@ -201,6 +214,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     @SuppressWarnings("unchecked")
+    @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public void setWholesaleRules(UUID productId, Map<String, Object> req) {
         UUID specId = req.containsKey("spec_id") && req.get("spec_id") != null
                 ? UUID.fromString((String) req.get("spec_id")) : null;

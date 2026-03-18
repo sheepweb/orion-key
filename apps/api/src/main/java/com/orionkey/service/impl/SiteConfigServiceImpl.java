@@ -5,6 +5,8 @@ import com.orionkey.repository.SiteConfigRepository;
 import com.orionkey.service.SiteConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,10 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class SiteConfigServiceImpl implements SiteConfigService {
+
+    private static final String CACHE_PUBLIC_CONFIG = "sitePublicConfig";
+    private static final String CACHE_CONFIG_VALUE = "siteConfigValue";
+    private static final String CACHE_CONFIG_INT = "siteConfigInt";
 
     private final SiteConfigRepository siteConfigRepository;
 
@@ -56,29 +62,39 @@ public class SiteConfigServiceImpl implements SiteConfigService {
     );
 
     @Override
+    @Cacheable(cacheNames = CACHE_PUBLIC_CONFIG, condition = "@cacheSwitchState.enabled")
     public Map<String, Object> getPublicConfig() {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String key : PUBLIC_KEYS) {
-            siteConfigRepository.findByConfigKey(key).ifPresent(c -> {
-                String val = c.getConfigValue();
-                if ("true".equalsIgnoreCase(val) || "false".equalsIgnoreCase(val)) {
-                    result.put(key, Boolean.parseBoolean(val));
-                } else if (NUMERIC_KEYS.contains(key)) {
-                    try {
-                        result.put(key, Integer.parseInt(val));
-                    } catch (NumberFormatException e) {
-                        result.put(key, val);
-                    }
-                } else {
-                    result.put(key, val);
-                }
-            });
+            siteConfigRepository.findByConfigKey(key).ifPresent(c -> result.put(key, convertConfigValue(key, c.getConfigValue())));
         }
         // F15: 对 custom_css 进行安全过滤，防止存储型 XSS
         if (result.containsKey("custom_css") && result.get("custom_css") instanceof String css) {
             result.put("custom_css", sanitizeCss(css));
         }
         return result;
+    }
+
+    @Override
+    @Cacheable(cacheNames = CACHE_CONFIG_VALUE, key = "#key", condition = "@cacheSwitchState.enabled")
+    public String getConfigValue(String key) {
+        return siteConfigRepository.findByConfigKey(key)
+                .map(SiteConfig::getConfigValue)
+                .orElse(null);
+    }
+
+    @Override
+    @Cacheable(cacheNames = CACHE_CONFIG_INT, key = "#key", condition = "@cacheSwitchState.enabled")
+    public int getConfigInt(String key, int defaultValue) {
+        String value = getConfigValue(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (Exception e) {
+            return defaultValue;
+        }
     }
 
     @Override
@@ -95,6 +111,7 @@ public class SiteConfigServiceImpl implements SiteConfigService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PUBLIC_CONFIG, CACHE_CONFIG_VALUE, CACHE_CONFIG_INT}, allEntries = true)
     public void updateConfigs(List<Map<String, String>> configs) {
         for (Map<String, String> item : configs) {
             String key = item.get("config_key");
@@ -121,6 +138,7 @@ public class SiteConfigServiceImpl implements SiteConfigService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CACHE_PUBLIC_CONFIG, CACHE_CONFIG_VALUE, CACHE_CONFIG_INT}, allEntries = true)
     public void toggleMaintenance(boolean enabled) {
         SiteConfig config = siteConfigRepository.findByConfigKey("maintenance_enabled")
                 .orElseGet(() -> {
@@ -131,6 +149,23 @@ public class SiteConfigServiceImpl implements SiteConfigService {
                 });
         config.setConfigValue(String.valueOf(enabled));
         siteConfigRepository.save(config);
+    }
+
+    private Object convertConfigValue(String key, String value) {
+        if (value == null) {
+            return null;
+        }
+        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+            return Boolean.parseBoolean(value);
+        }
+        if (NUMERIC_KEYS.contains(key)) {
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                return value;
+            }
+        }
+        return value;
     }
 
     /**

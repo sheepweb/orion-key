@@ -3,6 +3,7 @@ package com.orionkey.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -11,6 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Arrays;
 
 @Configuration
@@ -18,6 +20,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
+
+    @Value("${upload.cache-seconds:31536000}")
+    private long uploadCacheSeconds;
 
     /** CORS 允许的来源列表，逗号分隔。默认允许 localhost 开发环境。 */
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
@@ -66,6 +71,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         }
         String location = "file:" + dir.toString().replace('\\', '/') + "/";
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(location);
+                .addResourceLocations(location)
+                .setCacheControl(CacheControl.maxAge(Duration.ofSeconds(uploadCacheSeconds)).cachePublic());
     }
 }

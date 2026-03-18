@@ -7,6 +7,10 @@ public interface SiteConfigService {
 
     Map<String, Object> getPublicConfig();
 
+    String getConfigValue(String key);
+
+    int getConfigInt(String key, int defaultValue);
+
     List<?> getAllConfigs();
 
     void updateConfigs(List<Map<String, String>> configs);

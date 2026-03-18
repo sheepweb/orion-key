@@ -29,6 +29,8 @@ import type {
   PaymentChannelItem,
   OperationLog,
   RiskConfig,
+  CacheStatus,
+  CacheModuleKey,
   WholesaleRule,
   CaptchaResult,
   AuthResult,
@@ -522,6 +524,21 @@ export const adminConfigApi = {
     request<null>("/admin/site-config", { method: "PUT", body: JSON.stringify(data) }),
   toggleMaintenance: (enabled: boolean) =>
     request<null>("/admin/site-config/maintenance", { method: "POST", body: JSON.stringify({ enabled }) }),
+}
+
+// ============================================================
+// Admin Cache
+// ============================================================
+
+export const adminCacheApi = {
+  getStatus: () =>
+    request<CacheStatus>("/admin/cache"),
+  toggle: (enabled: boolean) =>
+    request<null>("/admin/cache/toggle", { method: "POST", body: JSON.stringify({ enabled }) }),
+  clearAll: () =>
+    request<null>("/admin/cache/clear-all", { method: "POST" }),
+  clearModule: (module: CacheModuleKey) =>
+    request<null>(`/admin/cache/clear/${module}`, { method: "POST" }),
 }
 
 // ============================================================

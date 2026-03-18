@@ -457,6 +457,22 @@ export interface RiskConfig {
 }
 
 // ============================================================
+// Admin Cache
+// ============================================================
+
+export type CacheModuleKey = 'site_config' | 'category' | 'product'
+
+export interface CacheModuleInfo {
+  key: CacheModuleKey
+  cache_names: string[]
+}
+
+export interface CacheStatus {
+  enabled: boolean
+  modules: CacheModuleInfo[]
+}
+
+// ============================================================
 // Admin TXID Review
 // ============================================================
 

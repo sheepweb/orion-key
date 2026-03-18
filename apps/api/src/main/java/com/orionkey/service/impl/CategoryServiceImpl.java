@@ -7,6 +7,8 @@ import com.orionkey.repository.ProductCategoryRepository;
 import com.orionkey.repository.ProductRepository;
 import com.orionkey.service.CategoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +18,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
+    private static final String CACHE_CATEGORY_LIST = "categoryList";
+
     private final ProductCategoryRepository categoryRepository;
     private final ProductRepository productRepository;
 
     @Override
+    @Cacheable(cacheNames = CACHE_CATEGORY_LIST, condition = "@cacheSwitchState.enabled")
     public List<?> listCategories() {
         return categoryRepository.findByIsDeletedOrderBySortOrderAsc(0).stream()
                 .map(c -> {
@@ -33,6 +38,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CACHE_CATEGORY_LIST, allEntries = true)
     public void createCategory(Map<String, Object> req) {
         String name = (String) req.get("name");
         if (categoryRepository.existsByNameAndIsDeleted(name, 0)) {
@@ -46,6 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CACHE_CATEGORY_LIST, allEntries = true)
     public void updateCategory(UUID id, Map<String, Object> req) {
         ProductCategory category = categoryRepository.findById(id)
                 .filter(c -> c.getIsDeleted() == 0)
@@ -63,6 +70,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CACHE_CATEGORY_LIST, allEntries = true)
     public void deleteCategory(UUID id) {
         ProductCategory category = categoryRepository.findById(id)
                 .filter(c -> c.getIsDeleted() == 0)

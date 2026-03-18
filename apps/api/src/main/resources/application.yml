@@ -58,10 +58,20 @@ jwt:
 security:
   password-plain: ${PASSWORD_PLAIN:true}  # true=明文密码(开发用), false=BCrypt(生产用)
 
+# App Cache
+app:
+  cache:
+    site-config-seconds: ${APP_CACHE_SITE_CONFIG_SECONDS:300}
+    config-value-seconds: ${APP_CACHE_CONFIG_VALUE_SECONDS:300}
+    category-seconds: ${APP_CACHE_CATEGORY_SECONDS:600}
+    product-list-seconds: ${APP_CACHE_PRODUCT_LIST_SECONDS:60}
+    product-detail-seconds: ${APP_CACHE_PRODUCT_DETAIL_SECONDS:60}
+
 # Upload
 upload:
   path: ${UPLOAD_PATH:./uploads}
   url-prefix: ${UPLOAD_URL_PREFIX:/api/uploads}
+  cache-seconds: ${UPLOAD_CACHE_SECONDS:31536000}
 
 # Mail
 mail:

@@ -9,6 +9,7 @@ import com.orionkey.exception.BusinessException;
 import com.orionkey.repository.*;
 import com.orionkey.service.OrderService;
 import com.orionkey.service.PaymentService;
+import com.orionkey.service.SiteConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,7 +33,7 @@ public class OrderServiceImpl implements OrderService {
     private final WholesaleRuleRepository wholesaleRuleRepository;
     private final CartItemRepository cartItemRepository;
     private final CardKeyRepository cardKeyRepository;
-    private final SiteConfigRepository siteConfigRepository;
+    private final SiteConfigService siteConfigService;
     private final PaymentService paymentService;
 
     @Override
@@ -85,7 +86,7 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal unitPrice = getUnitPrice(product, specId, quantity);
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        int expireMinutes = getConfigInt("order_expire_minutes", 15);
+        int expireMinutes = siteConfigService.getConfigInt("order_expire_minutes", 15);
 
         Order order = new Order();
         order.setUserId(userId);
@@ -157,7 +158,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.CART_EMPTY, "购物车为空");
         }
 
-        int expireMinutes = getConfigInt("order_expire_minutes", 15);
+        int expireMinutes = siteConfigService.getConfigInt("order_expire_minutes", 15);
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         Order order = new Order();
@@ -310,8 +311,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void checkPendingOrderLimits(UUID userId, String clientIp, String email) {
-        int maxPerUser = getConfigInt("max_pending_orders_per_user", 5);
-        int maxPerIp = getConfigInt("max_pending_orders_per_ip", 10);
+        int maxPerUser = siteConfigService.getConfigInt("max_pending_orders_per_user", 5);
+        int maxPerIp = siteConfigService.getConfigInt("max_pending_orders_per_ip", 10);
 
         if (userId != null) {
             long pending = orderRepository.countByUserIdAndStatus(userId, OrderStatus.PENDING);
@@ -373,13 +374,5 @@ public class OrderServiceImpl implements OrderService {
             return im;
         }).toList());
         return map;
-    }
-
-    private int getConfigInt(String key, int defaultValue) {
-        return siteConfigRepository.findByConfigKey(key)
-                .map(c -> {
-                    try { return Integer.parseInt(c.getConfigValue()); }
-                    catch (Exception e) { return defaultValue; }
-                }).orElse(defaultValue);
     }
 }
