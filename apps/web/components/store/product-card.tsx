@@ -29,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Image */}
       <Link
         href={productUrl}
-        className="relative block aspect-[3/2] cursor-pointer bg-muted sm:aspect-[4/3.2]"
+        className="relative block aspect-[5/3] cursor-pointer bg-muted sm:aspect-[4/3.2]"
       >
         {product.cover_url ? (
           <img
