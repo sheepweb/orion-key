@@ -244,6 +244,8 @@ export interface PaymentChannelConfig {
   api_v3_key?: string
   serial_no?: string
   private_key_path?: string
+  public_key_id?: string
+  public_key_path?: string
   // USDT
   wallet_address?: string
   rate_api_url?: string

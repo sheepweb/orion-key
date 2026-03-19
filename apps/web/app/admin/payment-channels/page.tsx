@@ -99,6 +99,8 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
       { key: "api_v3_key", label: "APIv3 密钥", placeholder: "微信支付 APIv3 密钥", type: "password" },
       { key: "serial_no", label: "证书序列号", placeholder: "API 证书序列号" },
       { key: "private_key_path", label: "私钥文件路径", placeholder: "例如：/certs/apiclient_key.pem" },
+      { key: "public_key_id", label: "平台公钥 ID", placeholder: "例如：PUB_KEY_ID_xxx" },
+      { key: "public_key_path", label: "平台公钥文件路径", placeholder: "例如：/certs/wechatpay_pub.pem" },
       { key: "notify_url", label: "异步回调地址", placeholder: "例如：https://yourdomain.com/api/payments/webhook/wxpay" },
     ],
   },

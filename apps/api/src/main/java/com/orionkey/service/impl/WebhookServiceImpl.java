@@ -4,17 +4,20 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orionkey.constant.ErrorCode;
 import com.orionkey.constant.OrderStatus;
-import com.orionkey.exception.BusinessException;
 import com.orionkey.entity.Order;
 import com.orionkey.entity.PaymentChannel;
 import com.orionkey.entity.WebhookEvent;
+import com.orionkey.exception.BusinessException;
 import com.orionkey.repository.OrderRepository;
 import com.orionkey.repository.PaymentChannelRepository;
 import com.orionkey.repository.WebhookEventRepository;
 import com.orionkey.service.BepusdtService;
 import com.orionkey.service.CatPayService;
 import com.orionkey.service.EpayService;
+import com.orionkey.service.WechatPayService;
 import com.orionkey.service.WebhookService;
+import com.wechat.pay.java.core.exception.ValidationException;
+import com.wechat.pay.java.service.payments.model.Transaction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +41,7 @@ public class WebhookServiceImpl implements WebhookService {
     private final EpayService epayService;
     private final BepusdtService bepusdtService;
     private final CatPayService catPayService;
+    private final WechatPayService wechatPayService;
     private final ObjectMapper objectMapper;
     private final PaymentServiceImpl paymentService;
 
@@ -383,6 +387,87 @@ public class WebhookServiceImpl implements WebhookService {
 
     @Override
     @Transactional
+    public String processWxpayCallback(Map<String, String> headers, String body) {
+        Transaction transaction;
+        try {
+            PaymentChannel channel = resolveWxpayChannel();
+            WechatPayService.WxpayConfig config = paymentService.buildWxpayConfig(channel);
+            transaction = wechatPayService.parseTransaction(config, headers, body);
+        } catch (ValidationException e) {
+            log.error("Wxpay callback sign verification failed", e);
+            throw e;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Wxpay callback parse failed", e);
+            throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "微信支付回调解析失败");
+        }
+
+        String eventId = "wxpay_" + (transaction.getTransactionId() != null
+                ? transaction.getTransactionId()
+                : UUID.randomUUID());
+        if (webhookEventRepository.findByEventId(eventId).isPresent()) {
+            log.info("Wxpay callback already processed: {}", eventId);
+            return "SUCCESS";
+        }
+
+        UUID orderId;
+        try {
+            orderId = UUID.fromString(transaction.getOutTradeNo());
+        } catch (IllegalArgumentException e) {
+            saveWebhookEvent(eventId, "wxpay", null, body, "INVALID_ORDER_ID");
+            return "FAIL";
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            saveWebhookEvent(eventId, "wxpay", null, body, "ORDER_NOT_FOUND");
+            return "FAIL";
+        }
+
+        if (transaction.getTradeState() != Transaction.TradeStateEnum.SUCCESS) {
+            saveWebhookEvent(eventId, "wxpay", order.getId(), body,
+                    "IGNORED_" + (transaction.getTradeState() == null ? "UNKNOWN" : transaction.getTradeState().name()));
+            return "SUCCESS";
+        }
+
+        Integer totalFen = transaction.getAmount() != null ? transaction.getAmount().getTotal() : null;
+        if (totalFen == null) {
+            saveWebhookEvent(eventId, "wxpay", order.getId(), body, "MISSING_AMOUNT");
+            return "FAIL";
+        }
+
+        int orderFen;
+        try {
+            orderFen = order.getActualAmount().movePointRight(2).intValueExact();
+        } catch (ArithmeticException e) {
+            log.error("Wxpay callback order amount invalid: orderId={}, amount={}", order.getId(), order.getActualAmount(), e);
+            saveWebhookEvent(eventId, "wxpay", order.getId(), body, "INVALID_ORDER_AMOUNT");
+            return "FAIL";
+        }
+
+        if (orderFen != totalFen) {
+            log.error("Wxpay callback amount mismatch: orderFen={}, callbackFen={}, orderId={}", orderFen, totalFen, order.getId());
+            saveWebhookEvent(eventId, "wxpay", order.getId(), body, "AMOUNT_MISMATCH");
+            return "FAIL";
+        }
+
+        order.setEpayTradeNo(transaction.getTransactionId());
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.PAID);
+            order.setPaidAt(LocalDateTime.now());
+            orderRepository.save(order);
+            saveWebhookEvent(eventId, "wxpay", order.getId(), body, "SUCCESS");
+        } else {
+            orderRepository.save(order);
+            saveWebhookEvent(eventId, "wxpay", order.getId(), body, "SKIPPED_" + order.getStatus().name());
+        }
+        return "SUCCESS";
+    }
+
+
+    @Override
+    @Transactional
     public String processBepusdtCallback(Map<String, Object> params) {
         // BEpusdt 回调 JSON 含非 String 类型（amount: float64, status: int），
         // 转为 Map<String, String> 用于签名验证（Object.toString() 与 Go 的 fmt.Sprintf("%v", v) 输出一致）
@@ -550,6 +635,15 @@ public class WebhookServiceImpl implements WebhookService {
         log.error("Cannot resolve merchant key for order {}: channel config missing 'key' field", orderId);
         throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE,
                 "支付渠道配置缺少 key，请在后台「支付渠道管理」中完善配置");
+    }
+
+    private PaymentChannel resolveWxpayChannel() {
+        return paymentChannelRepository
+                .findByChannelCodeAndProviderTypeAndIsDeleted("wechat", "native_wxpay", 0)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.CHANNEL_UNAVAILABLE,
+                        "未找到已配置的原生微信支付渠道，请先在后台完成 native_wxpay 配置"
+                ));
     }
 
     /**

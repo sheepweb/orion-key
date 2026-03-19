@@ -20,6 +20,9 @@ import com.orionkey.service.EpayService;
 import com.orionkey.service.EpayService.ChannelConfig;
 import com.orionkey.service.EpayService.EpayResult;
 import com.orionkey.service.PaymentService;
+import com.orionkey.service.WechatPayService;
+import com.orionkey.service.WechatPayService.NativePaymentResult;
+import com.orionkey.service.WechatPayService.WxpayConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,6 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final EpayService epayService;
     private final BepusdtService bepusdtService;
     private final CatPayService catPayService;
+    private final WechatPayService wechatPayService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -81,7 +85,7 @@ public class PaymentServiceImpl implements PaymentService {
             case "qiupay" -> createQiupayPayment(channel, order, paymentMethod, amount, device);
             case "catpay" -> createCatPayPayment(channel, order, paymentMethod, amount);
             case "native_alipay" -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "原生支付宝支付尚未实现，请使用易支付渠道");
-            case "native_wxpay" -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "原生微信支付尚未实现，请使用易支付渠道");
+            case "native_wxpay" -> createWxpayPayment(channel, order, amount);
             case "usdt" -> createBepusdtPayment(channel, order, amount);
             default -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "不支持的支付提供商类型: " + providerType);
         }
@@ -201,6 +205,33 @@ public class PaymentServiceImpl implements PaymentService {
         order.setQrcodeUrl(null);
         order.setEpayTradeNo(result.orderNo());
         orderRepository.save(order);
+    }
+
+    /**
+     * 原生微信 Native 下单流程。
+     */
+    private void createWxpayPayment(PaymentChannel channel, Order order, BigDecimal amount) {
+        WxpayConfig config = buildWxpayConfig(channel);
+        String productName = buildProductName(order.getId());
+        NativePaymentResult result = wechatPayService.createNativePayment(
+                config, order.getId().toString(), productName, amount);
+        order.setQrcodeUrl(result.codeUrl());
+        order.setPaymentUrl(result.codeUrl());
+        orderRepository.save(order);
+    }
+
+    public WxpayConfig buildWxpayConfig(PaymentChannel channel) {
+        Map<String, String> cfg = parseConfigData(channel.getConfigData());
+        return new WxpayConfig(
+                requireConfig(cfg, "appid", channel.getChannelCode()),
+                requireConfig(cfg, "mchid", channel.getChannelCode()),
+                requireConfig(cfg, "api_v3_key", channel.getChannelCode()),
+                requireConfig(cfg, "serial_no", channel.getChannelCode()),
+                requireConfig(cfg, "private_key_path", channel.getChannelCode()),
+                requireConfig(cfg, "notify_url", channel.getChannelCode()),
+                requireConfig(cfg, "public_key_id", channel.getChannelCode()),
+                requireConfig(cfg, "public_key_path", channel.getChannelCode())
+        );
     }
 
     /**

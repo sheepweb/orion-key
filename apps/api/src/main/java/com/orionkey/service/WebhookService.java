@@ -20,6 +20,11 @@ public interface WebhookService {
     String processCatPayCallback(Map<String, Object> params);
 
     /**
+     * 处理微信支付 API v3 回调（原始 body + 签名头）
+     */
+    String processWxpayCallback(Map<String, String> headers, String body);
+
+    /**
      * 处理 BEpusdt USDT 支付回调（JSON body，含非 String 类型字段如 amount/status）
      */
     String processBepusdtCallback(Map<String, Object> params);

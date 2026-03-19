@@ -1,8 +1,10 @@
 package com.orionkey.controller;
 
 import com.orionkey.service.WebhookService;
+import com.wechat.pay.java.core.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +47,26 @@ public class PaymentWebhookController {
         log.info("CatPay callback received: {}", params);
         String result = webhookService.processCatPayCallback(params);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 微信支付 API v3 回调。
+     */
+    @PostMapping(value = "/wxpay", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> handleWxpayCallback(
+            @RequestHeader Map<String, String> headers,
+            @RequestBody String body) {
+        try {
+            String result = webhookService.processWxpayCallback(headers, body);
+            return ResponseEntity.ok(Map.of("code", result, "message", "成功"));
+        } catch (ValidationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("code", "FAIL", "message", "签名验证失败"));
+        } catch (Exception e) {
+            log.error("Wxpay callback handling failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", "FAIL", "message", "处理失败"));
+        }
     }
 
     /**
