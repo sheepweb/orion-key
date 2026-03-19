@@ -147,6 +147,7 @@ export default function AdminPaymentChannelsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showKeys, setShowKeys] = useState(false)
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null)
 
   // Form state — step 1: provider, step 2: channel, step 3: config
   const [providerDropdownOpen, setProviderDropdownOpen] = useState(false)
@@ -163,6 +164,8 @@ export default function AdminPaymentChannelsPage() {
   const [formErrors, setFormErrors] = useState<Record<string, boolean>>({})
   const providerBtnRef = useRef<HTMLButtonElement>(null)
   const channelNameRef = useRef<HTMLInputElement>(null)
+  const publicKeyInputRef = useRef<HTMLInputElement>(null)
+  const privateKeyInputRef = useRef<HTMLInputElement>(null)
 
   // Current provider option
   const currentProvider = useMemo(
@@ -225,6 +228,7 @@ export default function AdminPaymentChannelsPage() {
       setConfigData({})
     }
     setShowKeys(false)
+    setUploadingKey(null)
     setShowModal(true)
   }
 
@@ -233,6 +237,7 @@ export default function AdminPaymentChannelsPage() {
     setFormData({ provider_type: "", channel_code: "", channel_name: "", is_enabled: true, sort_order: "" })
     setConfigData({})
     setShowKeys(false)
+    setUploadingKey(null)
     setShowModal(true)
   }
 
@@ -244,6 +249,7 @@ export default function AdminPaymentChannelsPage() {
     setProviderDropdownOpen(false)
     setChannelDropdownOpen(false)
     setShowKeys(false)
+    setUploadingKey(null)
     setFormErrors({})
   }
 
@@ -272,6 +278,44 @@ export default function AdminPaymentChannelsPage() {
 
   const handleConfigChange = (key: string, value: string) => {
     setConfigData(prev => ({ ...prev, [key]: value }))
+  }
+
+  const getUploadKind = (fieldKey: string): "public_key" | "private_key" | null => {
+    if (fieldKey === "public_key_path") return "public_key"
+    if (fieldKey === "private_key_path") return "private_key"
+    return null
+  }
+
+  const getUploadInputRef = (fieldKey: string) => {
+    if (fieldKey === "public_key_path") return publicKeyInputRef
+    if (fieldKey === "private_key_path") return privateKeyInputRef
+    return null
+  }
+
+  const handleTriggerUpload = (fieldKey: string) => {
+    getUploadInputRef(fieldKey)?.current?.click()
+  }
+
+  const handleUploadCert = async (fieldKey: string, file?: File) => {
+    const kind = getUploadKind(fieldKey)
+    if (!kind || !file) return
+    if (!file.name.toLowerCase().endsWith(".pem")) {
+      toast.error("仅支持上传 .pem 文件")
+      return
+    }
+
+    setUploadingKey(fieldKey)
+    try {
+      const result = await adminPaymentApi.uploadWxpayCert(kind, file)
+      handleConfigChange(fieldKey, result.path)
+      toast.success(`${fieldKey === "public_key_path" ? "平台公钥" : "商户私钥"}上传成功`)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "证书上传失败")
+    } finally {
+      setUploadingKey(null)
+      const inputRef = getUploadInputRef(fieldKey)
+      if (inputRef?.current) inputRef.current.value = ""
+    }
   }
 
   const handleSave = async () => {
@@ -645,13 +689,45 @@ export default function AdminPaymentChannelsPage() {
               {currentProvider.configFields.map((field) => (
                 <div key={field.key} className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-muted-foreground">{field.label}</label>
-                  <input
-                    type={field.type === "password" && !showKeys ? "password" : "text"}
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder={field.placeholder}
-                    value={configData[field.key] ?? ""}
-                    onChange={(e) => handleConfigChange(field.key, e.target.value)}
-                  />
+                  {currentProvider.type === "native_wxpay" && (field.key === "public_key_path" || field.key === "private_key_path") ? (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          placeholder={field.placeholder}
+                          value={configData[field.key] ?? ""}
+                          onChange={(e) => handleConfigChange(field.key, e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="rounded-md border border-input px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => handleTriggerUpload(field.key)}
+                          disabled={saving || uploadingKey !== null}
+                        >
+                          {uploadingKey === field.key ? "上传中..." : "上传 PEM"}
+                        </button>
+                      </div>
+                      <input
+                        ref={field.key === "public_key_path" ? publicKeyInputRef : privateKeyInputRef}
+                        type="file"
+                        accept=".pem"
+                        className="hidden"
+                        onChange={(e) => handleUploadCert(field.key, e.target.files?.[0])}
+                      />
+                      <span className="text-[11px] text-muted-foreground">
+                        文件仅保存到后端私有目录，不会暴露到前端或公网。
+                      </span>
+                    </>
+                  ) : (
+                    <input
+                      type={field.type === "password" && !showKeys ? "password" : "text"}
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder={field.placeholder}
+                      value={configData[field.key] ?? ""}
+                      onChange={(e) => handleConfigChange(field.key, e.target.value)}
+                    />
+                  )}
                 </div>
               ))}
             </div>

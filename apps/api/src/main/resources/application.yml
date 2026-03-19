@@ -73,6 +73,11 @@ upload:
   url-prefix: ${UPLOAD_URL_PREFIX:/api/uploads}
   cache-seconds: ${UPLOAD_CACHE_SECONDS:31536000}
 
+# WeChat Pay cert upload (private storage)
+wxpay:
+  cert-upload:
+    path: ${WXPAY_CERT_UPLOAD_PATH:./secure/wechatpay-certs}
+
 # Mail
 mail:
   enabled: ${MAIL_ENABLED:true}

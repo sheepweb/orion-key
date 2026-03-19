@@ -509,6 +509,12 @@ export const adminPaymentApi = {
     request<null>("/admin/payment-channels", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Partial<{ channel_name: string; provider_type: string; config_data: Record<string, unknown>; is_enabled: boolean; sort_order: number }>) =>
     request<null>(`/admin/payment-channels/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  uploadWxpayCert: (kind: "public_key" | "private_key", file: File) => {
+    const formData = new FormData()
+    formData.append("kind", kind)
+    formData.append("file", file)
+    return uploadRequest<{ path: string; filename: string }>("/admin/payment-channels/upload-cert", formData)
+  },
   delete: (id: string) =>
     request<null>(`/admin/payment-channels/${id}`, { method: "DELETE" }),
 }

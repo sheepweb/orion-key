@@ -3,8 +3,11 @@ package com.orionkey.controller;
 import com.orionkey.annotation.LogOperation;
 import com.orionkey.common.ApiResponse;
 import com.orionkey.service.AdminPaymentChannelService;
+import com.orionkey.service.WechatPayCertStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.UUID;
@@ -15,6 +18,7 @@ import java.util.UUID;
 public class AdminPaymentChannelController {
 
     private final AdminPaymentChannelService adminPaymentChannelService;
+    private final WechatPayCertStorageService wechatPayCertStorageService;
 
     @GetMapping
     public ApiResponse<?> listChannels() {
@@ -40,5 +44,17 @@ public class AdminPaymentChannelController {
     public ApiResponse<Void> deleteChannel(@PathVariable UUID id) {
         adminPaymentChannelService.deleteChannel(id);
         return ApiResponse.success();
+    }
+
+    @LogOperation(action = "payment.upload_cert", targetType = "PAYMENT_CHANNEL", detail = "'上传微信支付证书文件'")
+    @PostMapping(value = "/upload-cert", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Map<String, String>> uploadWxpayCert(
+            @RequestParam("kind") String kind,
+            @RequestParam("file") MultipartFile file) {
+        WechatPayCertStorageService.UploadResult result = wechatPayCertStorageService.storePemFile(kind, file);
+        return ApiResponse.success(Map.of(
+                "path", result.storedPath(),
+                "filename", result.originalFilename()
+        ));
     }
 }
