@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import { ArrowLeft, Search } from "lucide-react"
 import type { Metadata } from "next"
 import { ProductCard } from "@/components/store/product-card"
@@ -50,6 +50,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   ])
 
   if (!category) notFound()
+
+  if (category.slug && id !== category.slug) {
+    permanentRedirect(`/category/${category.slug}`)
+  }
 
   const productsData = await getProducts({ category_id: category.id, page: 1, page_size: 100 }).catch(() => ({
     list: [],

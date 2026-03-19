@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import { Package } from "lucide-react"
 import { getProductDetail, getPaymentChannels } from "@/services/api-server"
 import { ProductActions } from "./product-actions"
@@ -49,6 +49,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   ])
 
   if (!product) notFound()
+
+  if (product.slug && id !== product.slug) {
+    permanentRedirect(`/product/${product.slug}`)
+  }
 
   const inStock = (product.specs?.[0]?.stock_available ?? product.stock_available ?? 0) > 0
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
