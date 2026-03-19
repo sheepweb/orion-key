@@ -57,6 +57,10 @@ export default function AdminProductsPage() {
     title: "",
     description: "",
     detail_md: "",
+    slug: "",
+    seo_title: "",
+    seo_description: "",
+    seo_keywords: "",
     category_id: "",
     base_price: "",
     currency: "CNY",
@@ -148,6 +152,10 @@ export default function AdminProductsPage() {
       title: product.title,
       description: product.description || "",
       detail_md: product.detail_md || "",
+      slug: product.slug || "",
+      seo_title: product.seo_title || "",
+      seo_description: product.seo_description || "",
+      seo_keywords: product.seo_keywords || "",
       category_id: product.category_id,
       base_price: String(product.base_price),
       currency: product.currency || "CNY",
@@ -243,6 +251,10 @@ export default function AdminProductsPage() {
         title: formData.title,
         description: formData.description || undefined,
         detail_md: formData.detail_md || undefined,
+        slug: formData.slug || undefined,
+        seo_title: formData.seo_title || undefined,
+        seo_description: formData.seo_description || undefined,
+        seo_keywords: formData.seo_keywords || undefined,
         category_id: formData.category_id,
         base_price: basePrice,
         currency: formData.currency,
@@ -303,7 +315,25 @@ export default function AdminProductsPage() {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingProduct(null)
-    setFormData({ title: "", description: "", detail_md: "", category_id: "", base_price: "", currency: "CNY", cover_url: "", low_stock_threshold: "10", wholesale_enabled: false, is_enabled: true, initial_sales: "", sort_order: "", delivery_type: "AUTO" })
+    setFormData({
+      title: "",
+      description: "",
+      detail_md: "",
+      slug: "",
+      seo_title: "",
+      seo_description: "",
+      seo_keywords: "",
+      category_id: "",
+      base_price: "",
+      currency: "CNY",
+      cover_url: "",
+      low_stock_threshold: "10",
+      wholesale_enabled: false,
+      is_enabled: true,
+      initial_sales: "",
+      sort_order: "",
+      delivery_type: "AUTO",
+    })
     setFormSpecs([])
     setSpecsEnabled(false)
     setFormErrors({})
@@ -515,6 +545,48 @@ export default function AdminProductsPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-foreground">{t("admin.productBrief")}</label>
                 <input type="text" className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="简短描述商品特点" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+              </div>
+              {/* SEO 字段 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">Slug</label>
+                  <input
+                    type="text"
+                    className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="product-alias"
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">SEO 标题</label>
+                  <input
+                    type="text"
+                    className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="用于页面标题，可不填"
+                    value={formData.seo_title}
+                    onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">SEO 描述</label>
+                <textarea
+                  className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="用于搜索引擎描述，可不填"
+                  value={formData.seo_description}
+                  onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">SEO 关键词</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="多个关键词可用逗号分隔"
+                  value={formData.seo_keywords}
+                  onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
+                />
               </div>
               {/* 分类 + 货币类型 */}
               <div className="grid grid-cols-2 gap-4">

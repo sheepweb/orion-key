@@ -22,14 +22,14 @@ export function ProductCard({ product }: ProductCardProps) {
       ? "bg-amber-500"
       : "bg-emerald-500"
 
-  const productUrl = `/product/${product.id}`
+  const productUrl = `/product/${product.slug || product.id}`
 
   return (
     <div className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg hover:shadow-black/5">
       {/* Image */}
       <Link
         href={productUrl}
-        className="relative block aspect-[5/3] cursor-pointer bg-muted sm:aspect-[4/3.2]"
+        className="relative block aspect-[3/2] cursor-pointer bg-muted sm:aspect-[4/3.2]"
       >
         {product.cover_url ? (
           <img

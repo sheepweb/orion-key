@@ -65,8 +65,8 @@ export async function getProducts(params?: {
   )
 }
 
-export async function getProductDetail(id: string): Promise<ProductDetail> {
-  return serverRequest<ProductDetail>(`/products/${id}`)
+export async function getProductDetail(idOrSlug: string): Promise<ProductDetail> {
+  return serverRequest<ProductDetail>(`/products/${idOrSlug}`)
 }
 
 // ============================================================
@@ -75,6 +75,10 @@ export async function getProductDetail(id: string): Promise<ProductDetail> {
 
 export async function getCategories(): Promise<Category[]> {
   return serverRequest<Category[]>("/categories")
+}
+
+export async function getCategoryDetail(idOrSlug: string): Promise<Category> {
+  return serverRequest<Category>(`/categories/${idOrSlug}`)
 }
 
 // ============================================================

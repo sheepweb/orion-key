@@ -3,58 +3,68 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, Search } from "lucide-react"
 import type { Metadata } from "next"
 import { ProductCard } from "@/components/store/product-card"
-import { getCategories, getProducts, getSiteConfig } from "@/services/api-server"
+import { getCategoryDetail, getProducts, getSiteConfig } from "@/services/api-server"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
 
   try {
-    const [categories, config] = await Promise.all([
-      getCategories(),
+    const [category, config] = await Promise.all([
+      getCategoryDetail(id),
       getSiteConfig().catch(() => null),
     ])
-    const category = categories.find((item) => item.id === id)
-    if (!category) return { title: "分类不存在" }
 
     const siteName = config?.site_name || "Orion Key"
-    const description = `查看 ${category.name} 分类下的商品列表`
+    const title = category.seo_title || `${category.name} - ${siteName}`
+    const description = category.seo_description || `查看 ${category.name} 分类下的商品列表`
+    const categoryPath = category.slug || category.id
 
     return {
-      title: `${category.name} - ${siteName}`,
+      title,
       description,
-      alternates: { canonical: `/category/${id}` },
+      keywords: category.seo_keywords,
+      alternates: { canonical: `/category/${categoryPath}` },
       openGraph: {
-        title: `${category.name} - ${siteName}`,
+        title,
         description,
-        url: `/category/${id}`,
+        url: `/category/${categoryPath}`,
         type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
       },
     }
   } catch {
-    return { title: "商品分类" }
+    return { title: "分类不存在" }
   }
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  const [categories, productsData, config] = await Promise.all([
-    getCategories().catch(() => []),
-    getProducts({ category_id: id, page: 1, page_size: 100 }).catch(() => ({
-      list: [],
-      pagination: { page: 1, page_size: 100, total: 0 },
-    })),
+  const [category, config] = await Promise.all([
+    getCategoryDetail(id).catch(() => null),
     getSiteConfig().catch(() => null),
   ])
 
-  const category = categories.find((item) => item.id === id)
   if (!category) notFound()
+
+  const productsData = await getProducts({ category_id: category.id, page: 1, page_size: 100 }).catch(() => ({
+    list: [],
+    pagination: { page: 1, page_size: 100, total: 0 },
+  }))
+
+  const categoryPath = category.slug || category.id
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${category.name} - ${config?.site_name || "Orion Key"}`,
-    description: `查看 ${category.name} 分类下的商品列表`,
+    name: category.seo_title || `${category.name} - ${config?.site_name || "Orion Key"}`,
+    description: category.seo_description || `查看 ${category.name} 分类下的商品列表`,
+    url: `${baseUrl}/category/${categoryPath}`,
   }
 
   return (

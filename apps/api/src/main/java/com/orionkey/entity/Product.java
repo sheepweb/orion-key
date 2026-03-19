@@ -26,6 +26,16 @@ public class Product extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String detailMd;
 
+    private String slug;
+
+    private String seoTitle;
+
+    @Column(columnDefinition = "TEXT")
+    private String seoDescription;
+
+    @Column(columnDefinition = "TEXT")
+    private String seoKeywords;
+
     private String coverUrl;
 
     @Column(nullable = false, precision = 10, scale = 2)

@@ -9,7 +9,7 @@ public interface ProductService {
 
     PageResult<?> listPublicProducts(UUID categoryId, String keyword, int page, int pageSize);
 
-    Map<String, Object> getProductDetail(UUID id);
+    Map<String, Object> getProductDetail(String idOrSlug);
 
     Map<String, Object> getAdminProductDetail(UUID id);
 

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
@@ -44,4 +45,10 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
                                              Pageable pageable);
 
     long countByCategoryIdAndIsDeleted(UUID categoryId, int isDeleted);
+
+    boolean existsBySlugAndIsDeleted(String slug, int isDeleted);
+
+    boolean existsBySlugAndIdNotAndIsDeleted(String slug, UUID id, int isDeleted);
+
+    Optional<Product> findBySlugAndIsDeletedAndEnabled(String slug, int isDeleted, boolean enabled);
 }

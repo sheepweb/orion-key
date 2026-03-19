@@ -63,6 +63,10 @@ export interface UserProfile {
 export interface Category {
   id: string
   name: string
+  slug?: string
+  seo_title?: string
+  seo_description?: string
+  seo_keywords?: string
   sort_order: number
 }
 
@@ -85,10 +89,16 @@ export interface ProductCard {
   id: string
   title: string
   description?: string
+  slug?: string
+  seo_title?: string
+  seo_description?: string
+  seo_keywords?: string
   cover_url?: string
   base_price: number
   currency?: string
   category_id: string
+  category_name?: string
+  category_slug?: string
   stock_available: number
   has_specs: boolean
   delivery_type?: string
@@ -106,7 +116,6 @@ export interface ProductDetail extends ProductCard {
   wholesale_enabled: boolean
   wholesale_rules: WholesaleRule[]
   low_stock_threshold?: number
-  category_name?: string
   updated_at?: string
 }
 

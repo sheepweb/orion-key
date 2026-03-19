@@ -22,8 +22,8 @@ public class ProductController {
         return ApiResponse.success(productService.listPublicProducts(categoryId, keyword, page, pageSize));
     }
 
-    @GetMapping("/products/{id}")
-    public ApiResponse<?> getProduct(@PathVariable UUID id) {
-        return ApiResponse.success(productService.getProductDetail(id));
+    @GetMapping("/products/{idOrSlug}")
+    public ApiResponse<?> getProduct(@PathVariable String idOrSlug) {
+        return ApiResponse.success(productService.getProductDetail(idOrSlug));
     }
 }

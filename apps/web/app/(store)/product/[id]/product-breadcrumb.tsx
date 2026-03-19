@@ -7,11 +7,13 @@ import { useLocale } from "@/lib/context"
 interface ProductBreadcrumbProps {
   title: string
   categoryId?: string
+  categorySlug?: string
   categoryName?: string
 }
 
-export function ProductBreadcrumb({ title, categoryId, categoryName }: ProductBreadcrumbProps) {
+export function ProductBreadcrumb({ title, categoryId, categorySlug, categoryName }: ProductBreadcrumbProps) {
   const { t } = useLocale()
+  const categoryUrl = categorySlug || categoryId
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -23,10 +25,10 @@ export function ProductBreadcrumb({ title, categoryId, categoryName }: ProductBr
         {t("common.back")}
       </Link>
       <span>/</span>
-      {categoryId && categoryName ? (
+      {categoryUrl && categoryName ? (
         <>
           <Link
-            href={`/category/${categoryId}`}
+            href={`/category/${categoryUrl}`}
             className="transition-colors hover:text-foreground"
           >
             {categoryName}

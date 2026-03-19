@@ -390,13 +390,17 @@ export const adminProductApi = {
   create: (data: {
     title: string; description?: string; detail_md?: string; cover_url?: string;
     base_price: number; category_id: string; low_stock_threshold?: number;
-    wholesale_enabled?: boolean; is_enabled?: boolean; sort_order?: number
+    wholesale_enabled?: boolean; is_enabled?: boolean; sort_order?: number;
+    delivery_type?: string; initial_sales?: number; slug?: string;
+    seo_title?: string; seo_description?: string; seo_keywords?: string
   }) =>
     request<ProductDetail>("/admin/products", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Partial<{
     title: string; description: string; detail_md: string; cover_url: string;
     base_price: number; category_id: string; low_stock_threshold: number;
-    wholesale_enabled: boolean; is_enabled: boolean; sort_order: number
+    wholesale_enabled: boolean; is_enabled: boolean; sort_order: number;
+    delivery_type: string; initial_sales: number; slug: string;
+    seo_title: string; seo_description: string; seo_keywords: string
   }>) =>
     request<null>(`/admin/products/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   delete: (id: string) =>
@@ -430,9 +434,15 @@ export const adminProductApi = {
 export const adminCategoryApi = {
   getList: () =>
     request<Category[]>("/admin/categories"),
-  create: (data: { name: string; sort_order?: number }) =>
+  create: (data: {
+    name: string; sort_order?: number; slug?: string;
+    seo_title?: string; seo_description?: string; seo_keywords?: string
+  }) =>
     request<null>("/admin/categories", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: { name?: string; sort_order?: number }) =>
+  update: (id: string, data: {
+    name?: string; sort_order?: number; slug?: string;
+    seo_title?: string; seo_description?: string; seo_keywords?: string
+  }) =>
     request<null>(`/admin/categories/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<null>(`/admin/categories/${id}`, { method: "DELETE" }),

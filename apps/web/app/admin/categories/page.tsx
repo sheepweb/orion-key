@@ -18,7 +18,14 @@ export default function AdminCategoriesPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState({ name: "", sort_order: "" })
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    seo_title: "",
+    seo_description: "",
+    seo_keywords: "",
+    sort_order: "",
+  })
   const [formErrors, setFormErrors] = useState<Record<string, boolean>>({})
   const nameRef = useRef<HTMLInputElement>(null)
 
@@ -40,7 +47,14 @@ export default function AdminCategoriesPage() {
 
   const handleEdit = (category: Category) => {
     setEditId(category.id)
-    setFormData({ name: category.name, sort_order: String(category.sort_order) })
+    setFormData({
+      name: category.name,
+      slug: category.slug || "",
+      seo_title: category.seo_title || "",
+      seo_description: category.seo_description || "",
+      seo_keywords: category.seo_keywords || "",
+      sort_order: String(category.sort_order),
+    })
     setShowModal(true)
   }
 
@@ -55,22 +69,19 @@ export default function AdminCategoriesPage() {
     setFormErrors({})
     setSaving(true)
     try {
+      const payload = {
+        name: formData.name,
+        slug: formData.slug || undefined,
+        seo_title: formData.seo_title || undefined,
+        seo_description: formData.seo_description || undefined,
+        seo_keywords: formData.seo_keywords || undefined,
+        sort_order: parseInt(formData.sort_order) || undefined,
+      }
+
       if (editId) {
-        await withMockFallback(
-          () => adminCategoryApi.update(editId, {
-            name: formData.name,
-            sort_order: parseInt(formData.sort_order) || undefined,
-          }),
-          () => null
-        )
+        await withMockFallback(() => adminCategoryApi.update(editId, payload), () => null)
       } else {
-        await withMockFallback(
-          () => adminCategoryApi.create({
-            name: formData.name,
-            sort_order: parseInt(formData.sort_order) || undefined,
-          }),
-          () => null
-        )
+        await withMockFallback(() => adminCategoryApi.create(payload), () => null)
       }
       toast.success("保存成功")
       handleCloseModal()
@@ -99,7 +110,14 @@ export default function AdminCategoriesPage() {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditId(null)
-    setFormData({ name: "", sort_order: "" })
+    setFormData({
+      name: "",
+      slug: "",
+      seo_title: "",
+      seo_description: "",
+      seo_keywords: "",
+      sort_order: "",
+    })
     setFormErrors({})
   }
 
@@ -130,7 +148,14 @@ export default function AdminCategoriesPage() {
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
           onClick={() => {
             setEditId(null)
-            setFormData({ name: "", sort_order: "" })
+            setFormData({
+              name: "",
+              slug: "",
+              seo_title: "",
+              seo_description: "",
+              seo_keywords: "",
+              sort_order: "",
+            })
             setShowModal(true)
           }}
         >
@@ -155,6 +180,7 @@ export default function AdminCategoriesPage() {
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-foreground">{cat.name}</h3>
               <p className="text-xs text-muted-foreground">{t("admin.sortOrderLabel") + ":"} {cat.sort_order}</p>
+              {cat.slug && <p className="text-xs text-muted-foreground">Slug: {cat.slug}</p>}
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
@@ -202,6 +228,45 @@ export default function AdminCategoriesPage() {
                   placeholder={t("admin.categoryNamePlaceholder")}
                   value={formData.name}
                   onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFormErrors(prev => ({ ...prev, name: false })) }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Slug</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="digital-goods"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">SEO 标题</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="用于页面标题，可不填"
+                  value={formData.seo_title}
+                  onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">SEO 描述</label>
+                <textarea
+                  className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="用于搜索引擎描述，可不填"
+                  value={formData.seo_description}
+                  onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">SEO 关键词</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="多个关键词可用逗号分隔"
+                  value={formData.seo_keywords}
+                  onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
                 />
               </div>
               <div className="flex flex-col gap-1.5">

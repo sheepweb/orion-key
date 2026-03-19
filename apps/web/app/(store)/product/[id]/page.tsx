@@ -12,21 +12,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   try {
     const product = await getProductDetail(id)
+    const title = product.seo_title || product.title
+    const description = product.seo_description || product.description || product.title
+    const productPath = product.slug || product.id
+
     return {
-      title: product.title,
-      description: product.description || product.title,
-      alternates: { canonical: `/product/${id}` },
+      title,
+      description,
+      keywords: product.seo_keywords,
+      alternates: { canonical: `/product/${productPath}` },
       openGraph: {
-        title: product.title,
-        description: product.description || product.title,
-        url: `/product/${id}`,
+        title,
+        description,
+        url: `/product/${productPath}`,
         type: "website",
         ...(product.cover_url ? { images: [{ url: product.cover_url }] } : {}),
       },
       twitter: {
         card: "summary_large_image",
-        title: product.title,
-        description: product.description || product.title,
+        title,
+        description,
         ...(product.cover_url ? { images: [product.cover_url] } : {}),
       },
     }
@@ -47,25 +52,27 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   const inStock = (product.specs?.[0]?.stock_available ?? product.stock_available ?? 0) > 0
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const productPath = product.slug || product.id
+  const categoryPath = product.category_slug || product.category_id
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "首页", item: baseUrl },
-      ...(product.category_id && product.category_name
+      ...(categoryPath && product.category_name
         ? [{
             "@type": "ListItem",
             position: 2,
             name: product.category_name,
-            item: `${baseUrl}/category/${product.category_id}`,
+            item: `${baseUrl}/category/${categoryPath}`,
           }]
         : []),
       {
         "@type": "ListItem",
         position: product.category_name ? 3 : 2,
         name: product.title,
-        item: `${baseUrl}/product/${product.id}`,
+        item: `${baseUrl}/product/${productPath}`,
       },
     ],
   }
@@ -75,6 +82,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     "@type": "Product",
     name: product.title,
     description: product.description || product.title,
+    url: `${baseUrl}/product/${productPath}`,
     ...(product.cover_url ? { image: product.cover_url } : {}),
     offers: {
       "@type": "Offer",
@@ -101,6 +109,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <ProductBreadcrumb
         title={product.title}
         categoryId={product.category_id}
+        categorySlug={product.category_slug}
         categoryName={product.category_name}
       />
 

@@ -4,15 +4,18 @@ import com.orionkey.common.PageResult;
 import com.orionkey.constant.CardKeyStatus;
 import com.orionkey.constant.ErrorCode;
 import com.orionkey.entity.Product;
+import com.orionkey.entity.ProductCategory;
 import com.orionkey.entity.ProductSpec;
 import com.orionkey.entity.WholesaleRule;
 import com.orionkey.exception.BusinessException;
 import com.orionkey.repository.CardKeyRepository;
 import com.orionkey.repository.OrderItemRepository;
+import com.orionkey.repository.ProductCategoryRepository;
 import com.orionkey.repository.ProductRepository;
 import com.orionkey.repository.ProductSpecRepository;
 import com.orionkey.repository.WholesaleRuleRepository;
 import com.orionkey.service.ProductService;
+import com.orionkey.utils.SlugUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -37,6 +40,7 @@ public class ProductServiceImpl implements ProductService {
     private final WholesaleRuleRepository wholesaleRuleRepository;
     private final CardKeyRepository cardKeyRepository;
     private final OrderItemRepository orderItemRepository;
+    private final ProductCategoryRepository categoryRepository;
 
     @Override
     @Cacheable(cacheNames = CACHE_PRODUCT_LIST, key = "#categoryId + '|' + #keyword + '|' + #page + '|' + #pageSize", condition = "@cacheSwitchState.enabled")
@@ -54,12 +58,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Cacheable(cacheNames = CACHE_PRODUCT_DETAIL, key = "#id", condition = "@cacheSwitchState.enabled")
-    public Map<String, Object> getProductDetail(UUID id) {
-        Product product = productRepository.findById(id)
-                .filter(p -> p.getIsDeleted() == 0 && p.isEnabled())
-                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "商品不存在或已下架"));
-        return toProductDetail(product);
+    @Cacheable(cacheNames = CACHE_PRODUCT_DETAIL, key = "#idOrSlug", condition = "@cacheSwitchState.enabled")
+    public Map<String, Object> getProductDetail(String idOrSlug) {
+        return toProductDetail(findPublicProductByIdOrSlug(idOrSlug));
     }
 
     @Override
@@ -102,10 +103,23 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     @CacheEvict(cacheNames = {CACHE_PRODUCT_LIST, CACHE_PRODUCT_DETAIL}, allEntries = true)
     public Map<String, Object> createProduct(Map<String, Object> req) {
+        String title = (String) req.get("title");
+        String slug = req.containsKey("slug") && req.get("slug") != null
+                ? ((String) req.get("slug")).trim()
+                : null;
+        if (slug == null || slug.isEmpty()) {
+            slug = generateUniqueProductSlug(title);
+        } else if (productRepository.existsBySlugAndIsDeleted(slug, 0)) {
+            throw new BusinessException(ErrorCode.PRODUCT_SLUG_EXISTS, "商品 slug 已存在");
+        }
         Product product = new Product();
-        product.setTitle((String) req.get("title"));
+        product.setTitle(title);
         product.setDescription((String) req.get("description"));
         product.setDetailMd((String) req.get("detail_md"));
+        product.setSlug(slug);
+        product.setSeoTitle((String) req.get("seo_title"));
+        product.setSeoDescription((String) req.get("seo_description"));
+        product.setSeoKeywords((String) req.get("seo_keywords"));
         product.setCoverUrl((String) req.get("cover_url"));
         product.setBasePrice(new BigDecimal(req.get("base_price").toString()));
         if (req.containsKey("currency")) product.setCurrency((String) req.get("currency"));
@@ -130,6 +144,20 @@ public class ProductServiceImpl implements ProductService {
         if (req.containsKey("title")) product.setTitle((String) req.get("title"));
         if (req.containsKey("description")) product.setDescription((String) req.get("description"));
         if (req.containsKey("detail_md")) product.setDetailMd((String) req.get("detail_md"));
+        if (req.containsKey("slug")) {
+            String slug = req.get("slug") == null ? null : ((String) req.get("slug")).trim();
+            if (slug != null && !slug.isEmpty()) {
+                if (productRepository.existsBySlugAndIdNotAndIsDeleted(slug, id, 0)) {
+                    throw new BusinessException(ErrorCode.PRODUCT_SLUG_EXISTS, "商品 slug 已存在");
+                }
+                product.setSlug(slug);
+            } else if (product.getSlug() == null || product.getSlug().isBlank()) {
+                product.setSlug(generateUniqueProductSlug(product.getTitle()));
+            }
+        }
+        if (req.containsKey("seo_title")) product.setSeoTitle((String) req.get("seo_title"));
+        if (req.containsKey("seo_description")) product.setSeoDescription((String) req.get("seo_description"));
+        if (req.containsKey("seo_keywords")) product.setSeoKeywords((String) req.get("seo_keywords"));
         if (req.containsKey("cover_url")) product.setCoverUrl((String) req.get("cover_url"));
         if (req.containsKey("base_price")) product.setBasePrice(new BigDecimal(req.get("base_price").toString()));
         if (req.containsKey("currency")) product.setCurrency((String) req.get("currency"));
@@ -142,6 +170,37 @@ public class ProductServiceImpl implements ProductService {
         if (req.containsKey("sort_order")) product.setSortOrder(((Number) req.get("sort_order")).intValue());
         productRepository.save(product);
     }
+
+    private String generateUniqueProductSlug(String title) {
+        String base = SlugUtils.slugify(title);
+        if (base.isEmpty()) {
+            base = "product-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+        String candidate = base;
+        int index = 2;
+        while (productRepository.existsBySlugAndIsDeleted(candidate, 0)) {
+            candidate = base + "-" + index++;
+        }
+        return candidate;
+    }
+
+    private Product findPublicProductByIdOrSlug(String idOrSlug) {
+        return productRepository.findBySlugAndIsDeletedAndEnabled(idOrSlug, 0, true)
+                .or(() -> parseUuid(idOrSlug)
+                        .flatMap(productRepository::findById)
+                        .filter(product -> product.getIsDeleted() == 0 && product.isEnabled()))
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "商品不存在或已下架"));
+    }
+
+    private Optional<UUID> parseUuid(String value) {
+        try {
+            return Optional.of(UUID.fromString(value));
+        } catch (Exception ignored) {
+            return Optional.empty();
+        }
+    }
+
+
 
     @Override
     @Transactional
@@ -246,10 +305,19 @@ public class ProductServiceImpl implements ProductService {
         map.put("id", p.getId());
         map.put("title", p.getTitle());
         map.put("description", p.getDescription());
+        map.put("slug", p.getSlug());
+        map.put("seo_title", p.getSeoTitle());
+        map.put("seo_description", p.getSeoDescription());
+        map.put("seo_keywords", p.getSeoKeywords());
         map.put("cover_url", p.getCoverUrl());
         map.put("base_price", p.getBasePrice());
         map.put("currency", p.getCurrency());
         map.put("category_id", p.getCategoryId());
+        ProductCategory category = categoryRepository.findById(p.getCategoryId())
+                .filter(c -> c.getIsDeleted() == 0)
+                .orElse(null);
+        map.put("category_name", category != null ? category.getName() : null);
+        map.put("category_slug", category != null ? category.getSlug() : null);
         List<ProductSpec> specs = productSpecRepository.findByProductIdAndIsDeletedOrderBySortOrderAsc(p.getId(), 0);
         // For products with specs, sum stock across all specs; for products without specs, count spec-null keys
         long stockAvailable = specs.isEmpty()

@@ -17,6 +17,16 @@ public class ProductCategory extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    private String slug;
+
+    private String seoTitle;
+
+    @Column(columnDefinition = "TEXT")
+    private String seoDescription;
+
+    @Column(columnDefinition = "TEXT")
+    private String seoKeywords;
+
     private int sortOrder = 0;
 
     private int isDeleted = 0;
