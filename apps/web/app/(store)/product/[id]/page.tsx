@@ -53,10 +53,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "首页", item: baseUrl },
-      ...(product.category_name
-        ? [{ "@type": "ListItem", position: 2, name: product.category_name }]
+      ...(product.category_id && product.category_name
+        ? [{
+            "@type": "ListItem",
+            position: 2,
+            name: product.category_name,
+            item: `${baseUrl}/category/${product.category_id}`,
+          }]
         : []),
-      { "@type": "ListItem", position: product.category_name ? 3 : 2, name: product.title },
+      {
+        "@type": "ListItem",
+        position: product.category_name ? 3 : 2,
+        name: product.title,
+        item: `${baseUrl}/product/${product.id}`,
+      },
     ],
   }
 
@@ -88,7 +98,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Breadcrumb */}
-      <ProductBreadcrumb title={product.title} />
+      <ProductBreadcrumb
+        title={product.title}
+        categoryId={product.category_id}
+        categoryName={product.category_name}
+      />
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Left: Image — server rendered */}

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next"
-import { getProducts } from "@/services/api-server"
+import { getCategories, getProducts } from "@/services/api-server"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
@@ -12,14 +12,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   try {
-    const data = await getProducts({ page: 1, page_size: 1000 })
-    const productRoutes: MetadataRoute.Sitemap = data.list.map((p) => ({
+    const [productsData, categories] = await Promise.all([
+      getProducts({ page: 1, page_size: 1000 }),
+      getCategories().catch(() => []),
+    ])
+
+    const productRoutes: MetadataRoute.Sitemap = productsData.list.map((p) => ({
       url: `${baseUrl}/product/${p.id}`,
       lastModified: p.created_at ? new Date(p.created_at) : new Date(),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     }))
-    return [...staticRoutes, ...productRoutes]
+
+    const categoryRoutes: MetadataRoute.Sitemap = categories.map((category) => ({
+      url: `${baseUrl}/category/${category.id}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }))
+
+    return [...staticRoutes, ...categoryRoutes, ...productRoutes]
   } catch {
     return staticRoutes
   }

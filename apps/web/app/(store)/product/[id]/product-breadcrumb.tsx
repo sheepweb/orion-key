@@ -4,11 +4,17 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useLocale } from "@/lib/context"
 
-export function ProductBreadcrumb({ title }: { title: string }) {
+interface ProductBreadcrumbProps {
+  title: string
+  categoryId?: string
+  categoryName?: string
+}
+
+export function ProductBreadcrumb({ title, categoryId, categoryName }: ProductBreadcrumbProps) {
   const { t } = useLocale()
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <Link
         href="/"
         className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
@@ -17,6 +23,17 @@ export function ProductBreadcrumb({ title }: { title: string }) {
         {t("common.back")}
       </Link>
       <span>/</span>
+      {categoryId && categoryName ? (
+        <>
+          <Link
+            href={`/category/${categoryId}`}
+            className="transition-colors hover:text-foreground"
+          >
+            {categoryName}
+          </Link>
+          <span>/</span>
+        </>
+      ) : null}
       <span className="truncate max-w-[200px] sm:max-w-none">{title}</span>
     </div>
   )
