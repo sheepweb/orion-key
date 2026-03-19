@@ -13,6 +13,9 @@ import com.orionkey.repository.PaymentChannelRepository;
 import com.orionkey.service.BepusdtService;
 import com.orionkey.service.BepusdtService.BepusdtConfig;
 import com.orionkey.service.BepusdtService.BepusdtPaymentResult;
+import com.orionkey.service.CatPayService;
+import com.orionkey.service.CatPayService.CatPayConfig;
+import com.orionkey.service.CatPayService.CatPayOrderResult;
 import com.orionkey.service.EpayService;
 import com.orionkey.service.EpayService.ChannelConfig;
 import com.orionkey.service.EpayService.EpayResult;
@@ -45,6 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderItemRepository orderItemRepository;
     private final EpayService epayService;
     private final BepusdtService bepusdtService;
+    private final CatPayService catPayService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -75,6 +79,7 @@ public class PaymentServiceImpl implements PaymentService {
         switch (providerType) {
             case "epay" -> createEpayPayment(channel, order, paymentMethod, amount, device);
             case "qiupay" -> createQiupayPayment(channel, order, paymentMethod, amount, device);
+            case "catpay" -> createCatPayPayment(channel, order, paymentMethod, amount);
             case "native_alipay" -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "原生支付宝支付尚未实现，请使用易支付渠道");
             case "native_wxpay" -> throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "原生微信支付尚未实现，请使用易支付渠道");
             case "usdt" -> createBepusdtPayment(channel, order, amount);
@@ -180,6 +185,25 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     /**
+     * CatPay 下单流程
+     */
+    private void createCatPayPayment(PaymentChannel channel, Order order, String paymentMethod, BigDecimal amount) {
+        CatPayConfig config = buildCatPayConfig(channel, paymentMethod);
+        Map<String, Object> metadata = Map.of(
+                "orderId", order.getId().toString(),
+                "paymentMethod", paymentMethod
+        );
+
+        CatPayOrderResult result = catPayService.createPayment(
+                config, amount, order.getId().toString(), config.type(), metadata);
+
+        order.setPaymentUrl(result.paymentLink());
+        order.setQrcodeUrl(null);
+        order.setEpayTradeNo(result.orderNo());
+        orderRepository.save(order);
+    }
+
+    /**
      * 从渠道的 config_data JSON 构建 EpayService.ChannelConfig。
      * 所有必填字段均从数据库渠道配置读取，缺失则抛出异常。
      */
@@ -193,6 +217,22 @@ public class PaymentServiceImpl implements PaymentService {
         String returnUrl = requireConfig(cfg, "return_url", channel.getChannelCode());
 
         return new ChannelConfig(pid, key, apiUrl, notifyUrl, returnUrl);
+    }
+
+    /**
+     * 从渠道的 config_data JSON 构建 CatPay 配置。
+     */
+    public CatPayConfig buildCatPayConfig(PaymentChannel channel, String paymentMethod) {
+        Map<String, String> cfg = parseConfigData(channel.getConfigData());
+        String apiUrl = requireConfig(cfg, "api_url", channel.getChannelCode());
+        String apiKey = cfg.getOrDefault("api_key", "");
+        String webhookUrl = requireConfig(cfg, "webhook_url", channel.getChannelCode());
+        String type = cfg.get("type");
+        if (type == null || type.isBlank()) {
+            String lower = paymentMethod == null ? "" : paymentMethod.toLowerCase();
+            type = lower.contains("ali") ? "alipay" : "wechat";
+        }
+        return new CatPayConfig(apiUrl, apiKey, webhookUrl, type);
     }
 
     private Map<String, Object> buildResult(Order order) {

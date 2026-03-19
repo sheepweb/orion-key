@@ -12,6 +12,7 @@ import com.orionkey.repository.OrderRepository;
 import com.orionkey.repository.PaymentChannelRepository;
 import com.orionkey.repository.WebhookEventRepository;
 import com.orionkey.service.BepusdtService;
+import com.orionkey.service.CatPayService;
 import com.orionkey.service.EpayService;
 import com.orionkey.service.WebhookService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class WebhookServiceImpl implements WebhookService {
     private final PaymentChannelRepository paymentChannelRepository;
     private final EpayService epayService;
     private final BepusdtService bepusdtService;
+    private final CatPayService catPayService;
     private final ObjectMapper objectMapper;
     private final PaymentServiceImpl paymentService;
 
@@ -326,6 +328,61 @@ public class WebhookServiceImpl implements WebhookService {
 
     @Override
     @Transactional
+    public String processCatPayCallback(Map<String, Object> params) {
+        String event = valueAsString(params.get("event"));
+        String orderNo = valueAsString(params.get("orderNo"));
+        String status = valueAsString(params.get("status"));
+        String eventId = "catpay_" + (orderNo != null ? orderNo : UUID.randomUUID());
+
+        if (webhookEventRepository.findByEventId(eventId).isPresent()) {
+            log.info("CatPay callback already processed: {}", eventId);
+            return "success";
+        }
+
+        Order order = resolveCatPayOrder(params, orderNo);
+        if (order == null) {
+            saveWebhookEvent(eventId, "catpay", null, params.toString(), "ORDER_NOT_FOUND");
+            return "fail";
+        }
+
+        if (!"order.paid".equals(event) || !"success".equals(status)) {
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "IGNORED_" + status);
+            return "success";
+        }
+
+        CatPayService.CatPayOrderQueryResult queryResult = resolveCatPayOrderResult(order, orderNo);
+        if (queryResult == null) {
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "QUERY_FAILED");
+            return "fail";
+        }
+        if (!"success".equals(queryResult.status())) {
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "QUERY_STATUS_MISMATCH");
+            return "fail";
+        }
+        if (queryResult.expectedAmount() == null || order.getActualAmount().compareTo(queryResult.expectedAmount()) != 0) {
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "AMOUNT_MISMATCH");
+            return "fail";
+        }
+
+        Object queryOrderId = queryResult.metadata().get("orderId");
+        if (queryOrderId != null && !order.getId().toString().equals(queryOrderId.toString())) {
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "METADATA_ORDER_MISMATCH");
+            return "fail";
+        }
+
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.PAID);
+            order.setPaidAt(LocalDateTime.now());
+            orderRepository.save(order);
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "SUCCESS");
+        } else {
+            saveWebhookEvent(eventId, "catpay", order.getId(), params.toString(), "SKIPPED_" + order.getStatus().name());
+        }
+        return "success";
+    }
+
+    @Override
+    @Transactional
     public String processBepusdtCallback(Map<String, Object> params) {
         // BEpusdt 回调 JSON 含非 String 类型（amount: float64, status: int），
         // 转为 Map<String, String> 用于签名验证（Object.toString() 与 Go 的 fmt.Sprintf("%v", v) 输出一致）
@@ -517,6 +574,40 @@ public class WebhookServiceImpl implements WebhookService {
      */
     private boolean isQueryStatusPaid(String status) {
         return "TRADE_SUCCESS".equals(status) || "1".equals(status);
+    }
+
+    private String valueAsString(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Order resolveCatPayOrder(Map<String, Object> params, String orderNo) {
+        Object metadataObj = params.get("metadata");
+        if (metadataObj instanceof Map<?, ?> metadata) {
+            Object orderId = ((Map<String, Object>) metadata).get("orderId");
+            if (orderId != null) {
+                try {
+                    return orderRepository.findById(UUID.fromString(orderId.toString())).orElse(null);
+                } catch (IllegalArgumentException e) {
+                    log.warn("CatPay callback invalid metadata.orderId: {}", orderId);
+                }
+            }
+        }
+        if (orderNo == null || orderNo.isBlank()) return null;
+        return orderRepository.findByEpayTradeNo(orderNo).orElse(null);
+    }
+
+    private CatPayService.CatPayOrderQueryResult resolveCatPayOrderResult(Order order, String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) return null;
+        if (order.getPaymentMethod() == null) return null;
+        PaymentChannel channel = paymentChannelRepository.findByChannelCodeAndIsDeleted(order.getPaymentMethod(), 0).orElse(null);
+        if (channel == null) return null;
+        try {
+            return catPayService.queryOrder(paymentService.buildCatPayConfig(channel, order.getPaymentMethod()), orderNo);
+        } catch (Exception e) {
+            log.warn("Failed to query CatPay order {}: {}", orderNo, e.getMessage());
+            return null;
+        }
     }
 
     /**

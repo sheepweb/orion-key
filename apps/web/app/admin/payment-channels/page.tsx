@@ -61,6 +61,21 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
     ],
   },
   {
+    type: "catpay",
+    name: "CatPay",
+    description: "通过 CatPay 接入支付宝/微信收款，支付成功后由服务端二次查单确认",
+    channels: [
+      { code: "alipay", name: "支付宝" },
+      { code: "wechat", name: "微信支付" },
+    ],
+    configFields: [
+      { key: "api_url", label: "API 地址", placeholder: "例如：https://catpay.example.com" },
+      { key: "api_key", label: "API Key", placeholder: "可选，不填则按服务端配置处理", type: "password" },
+      { key: "webhook_url", label: "支付成功回调地址", placeholder: "例如：https://yourdomain.com/api/payment/webhook/catpay" },
+      { key: "type", label: "支付类型（可选）", placeholder: "wechat 或 alipay；留空则按渠道自动推断" },
+    ],
+  },
+  {
     type: "native_alipay",
     name: "原生支付宝",
     description: "直接对接支付宝开放平台，需要企业资质",

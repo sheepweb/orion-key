@@ -38,6 +38,16 @@ public class PaymentWebhookController {
     }
 
     /**
+     * CatPay 支付成功回调 — POST JSON，返回纯文本 success/fail
+     */
+    @PostMapping(value = "/catpay", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> handleCatPayCallback(@RequestBody Map<String, Object> params) {
+        log.info("CatPay callback received: {}", params);
+        String result = webhookService.processCatPayCallback(params);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * BEpusdt USDT 支付回调 — POST JSON，返回 "ok" 表示成功
      */
     @PostMapping(value = "/usdt", produces = MediaType.TEXT_PLAIN_VALUE)

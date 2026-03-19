@@ -15,6 +15,11 @@ public interface WebhookService {
     String processQiupayCallback(Map<String, String> params);
 
     /**
+     * 处理 CatPay 支付成功回调（JSON body）
+     */
+    String processCatPayCallback(Map<String, Object> params);
+
+    /**
      * 处理 BEpusdt USDT 支付回调（JSON body，含非 String 类型字段如 amount/status）
      */
     String processBepusdtCallback(Map<String, Object> params);

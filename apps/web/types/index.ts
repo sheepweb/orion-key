@@ -221,7 +221,7 @@ export interface CurrencyItem {
 // Payment
 // ============================================================
 
-export type ProviderType = 'epay' | 'qiupay' | 'native_alipay' | 'native_wxpay' | 'usdt'
+export type ProviderType = 'epay' | 'qiupay' | 'catpay' | 'native_alipay' | 'native_wxpay' | 'usdt'
 
 export interface PaymentChannelConfig {
   // 易支付
@@ -230,6 +230,10 @@ export interface PaymentChannelConfig {
   api_url?: string
   notify_url?: string
   return_url?: string
+  // CatPay
+  api_key?: string
+  webhook_url?: string
+  type?: string
   // 原生支付宝
   appid?: string
   private_key?: string
