@@ -9,8 +9,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfig().catch(() => null)
 
   return buildSeoMetadata({
-    title: "专题内容",
-    description: "汇总购买指南、发货说明、售后建议等内容型 SEO 页面，承接更多长尾搜索词。",
+    title: "专题内容与购买指南",
+    description: "集中查看购买指南、发货说明、售后建议等专题内容，作为承接长尾搜索的专题聚合页。",
     path: "/topics",
     siteConfig: config,
   })
@@ -31,9 +31,18 @@ export default async function TopicListPage() {
     section,
     items: articles.filter((article) => (article.section || "专题") === section),
   }))
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "专题内容与购买指南",
+    description: "集中查看购买指南、发货说明、售后建议等专题内容，作为承接长尾搜索的专题聚合页。",
+    url: `${baseUrl}/topics`,
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">内容专题</p>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">购买与售后专题页</h1>

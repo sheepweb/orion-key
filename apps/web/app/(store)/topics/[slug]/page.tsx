@@ -19,7 +19,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const [article, config] = await Promise.all([getTopicArticle(slug), getSiteConfig().catch(() => null)])
   if (!article) return { title: "专题不存在" }
 
-  return buildSeoMetadata({ title: article.title, description: article.description, path: `/topics/${article.slug}`, keywords: article.keywords || null, imageUrl: article.coverImage, type: "article", siteConfig: config })
+  return buildSeoMetadata({
+    title: `${article.title} - 专题内容`,
+    description: `${article.description} 适合用于查看购买指南、发货说明与售后建议。`,
+    path: `/topics/${article.slug}`,
+    keywords: article.keywords || null,
+    imageUrl: article.coverImage,
+    type: "article",
+    siteConfig: config,
+  })
 }
 
 export default async function TopicDetailPage({ params }: { params: Promise<{ slug: string }> }) {

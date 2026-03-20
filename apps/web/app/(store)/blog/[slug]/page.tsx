@@ -17,7 +17,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const [article, config] = await Promise.all([getBlogArticle(slug), getSiteConfig().catch(() => null)])
   if (!article) return { title: "博客不存在" }
 
-  return buildSeoMetadata({ title: article.title, description: article.description, path: `/blog/${article.slug}`, keywords: article.keywords || null, imageUrl: article.coverImage, type: "article", siteConfig: config })
+  return buildSeoMetadata({
+    title: `${article.title} - 博客公告`,
+    description: `${article.description} 适合用于查看站点公告、更新说明与购买建议。`,
+    path: `/blog/${article.slug}`,
+    keywords: article.keywords || null,
+    imageUrl: article.coverImage,
+    type: "article",
+    siteConfig: config,
+  })
 }
 
 export default async function BlogDetailPage({ params }: { params: Promise<{ slug: string }> }) {

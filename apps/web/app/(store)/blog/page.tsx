@@ -8,8 +8,8 @@ import { getSiteConfig } from "@/services/api-server"
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfig().catch(() => null)
   return buildSeoMetadata({
-    title: "博客公告",
-    description: "汇总站点公告、购买建议、上新说明与使用技巧，形成持续更新的内容型 SEO 页面。",
+    title: "博客公告与更新",
+    description: "集中查看站点公告、购买建议、上新说明与内容更新，作为持续更新的博客聚合页。",
     path: "/blog",
     siteConfig: config,
   })
@@ -34,9 +34,18 @@ export default async function BlogListPage() {
     { href: "/feed", label: "内容订阅", description: "集中查看 RSS 订阅入口与内容聚合页" },
     { href: "/blog/rss.xml", label: "订阅 RSS", description: "通过 RSS 持续获取博客公告更新" },
   ]
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "博客公告与更新",
+    description: "集中查看站点公告、购买建议、上新说明与内容更新，作为持续更新的博客聚合页。",
+    url: `${baseUrl}/blog`,
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">博客公告</p>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">站点博客与公告</h1>

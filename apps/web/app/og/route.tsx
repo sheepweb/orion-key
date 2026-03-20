@@ -70,7 +70,7 @@ export async function GET(request: Request) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, maxWidth: "220px", textAlign: "right" }}>
                 <div style={{ fontSize: 18, color: "rgba(255,255,255,0.64)" }}>ENTITY TYPE</div>
-                <div style={{ fontSize: 24 }}>{theme.badge}</div>
+                <div style={{ fontSize: 24 }}>{badge}</div>
                 <div style={{ fontSize: 18, color: "rgba(255,255,255,0.62)" }}>{label}</div>
               </div>
             </div>
