@@ -81,7 +81,8 @@ export function HomeContent({ products, categories, siteSlogan, siteDescription 
       </section>
 
       <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-center gap-5 py-3 sm:gap-7">
+        {/* Trust badges */}
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 py-3 sm:gap-x-7">
           {trustBadges.map((badge, i) => (
             <div key={badge.label} className="flex items-center gap-1.5">
               <div className={cn("flex h-6 w-6 items-center justify-center rounded-md", badge.bg)}><badge.icon className={cn("h-3.5 w-3.5", badge.color)} /></div>
