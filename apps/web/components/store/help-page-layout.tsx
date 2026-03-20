@@ -1,8 +1,14 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { SeoLinkSection } from "@/components/store/seo-link-section"
 import type { HelpArticle } from "@/lib/help-content"
 
-export function HelpPageLayout({ article }: { article: HelpArticle }) {
+type HelpPageLayoutProps = {
+  article: HelpArticle
+  relatedItems?: Array<{ href: string; label: string; description: string }>
+}
+
+export function HelpPageLayout({ article, relatedItems = [] }: HelpPageLayoutProps) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <div className="space-y-3">
@@ -34,6 +40,8 @@ export function HelpPageLayout({ article }: { article: HelpArticle }) {
           ))}
         </div>
       </div>
+
+      {relatedItems.length > 0 ? <SeoLinkSection title="相关阅读与继续探索" items={relatedItems} /> : null}
     </div>
   )
 }

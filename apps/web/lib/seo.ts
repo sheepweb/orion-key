@@ -26,12 +26,30 @@ function resolveContentLabel(path: string) {
   return "数字商品"
 }
 
+function resolveContentVariant(path: string) {
+  if (path.startsWith("/blog")) return "blog"
+  if (path.startsWith("/topics")) return "topics"
+  if (path.startsWith("/help")) return "help"
+  if (path.startsWith("/product-tag")) return "product-tag"
+  return "default"
+}
+
+function resolveContentSubtitle(path: string) {
+  if (path.startsWith("/blog")) return "博客公告 · 更新说明 · 选购建议"
+  if (path.startsWith("/topics")) return "专题内容 · 购买指南 · 售后建议"
+  if (path.startsWith("/help")) return "帮助中心 · FAQ · 支付与发货说明"
+  if (path.startsWith("/product-tag")) return "商品标签 · 内容聚合 · 继续发现"
+  return "数字商品自动发货 · 购买指南 · 帮助内容"
+}
+
 function buildDynamicOgUrl(path: string, title: string, siteName: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const params = new URLSearchParams({
     title,
     label: resolveContentLabel(path),
     siteName,
+    variant: resolveContentVariant(path),
+    subtitle: resolveContentSubtitle(path),
   })
   return `${baseUrl}/og?${params.toString()}`
 }

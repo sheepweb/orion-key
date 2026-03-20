@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { HelpPageLayout } from "@/components/store/help-page-layout"
-import { SeoLinkSection } from "@/components/store/seo-link-section"
-import { getHelpArticle, helpArticles } from "@/lib/help-content"
+import { getHelpArticle, getRelatedHelpArticles, helpArticles } from "@/lib/help-content"
 import { buildSeoMetadata } from "@/lib/seo"
 import { getSiteConfig } from "@/services/api-server"
 
@@ -43,22 +42,20 @@ export default async function HelpArticlePage({ params }: { params: Promise<{ sl
     : null
 
   const relatedItems = [
-    { href: "/", label: "返回首页", description: "继续浏览商品与分类" },
     { href: "/help", label: "返回帮助中心", description: "查看更多购买、支付、售后与使用说明" },
-    ...helpArticles.filter((item) => item.slug !== article.slug).slice(0, 4).map((item) => ({
+    ...getRelatedHelpArticles(article.slug, 3).map((item) => ({
       href: `/help/${item.slug}`,
       label: item.title,
       description: item.description,
     })),
+    { href: "/topics", label: "专题内容", description: "继续浏览购买指南、发货说明与售后专题" },
+    { href: "/feed", label: "内容中心", description: "返回内容索引页查看最近更新与 RSS 订阅" },
   ]
 
   return (
     <>
       {faqJsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} /> : null}
-      <div className="flex flex-col gap-6">
-        <HelpPageLayout article={article} />
-        <SeoLinkSection title="继续浏览相关帮助内容" items={relatedItems} />
-      </div>
+      <HelpPageLayout article={article} relatedItems={relatedItems} />
     </>
   )
 }

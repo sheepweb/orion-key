@@ -58,3 +58,23 @@ export function getHelpArticle(slug: string) {
   return helpArticles.find((item) => item.slug === slug) || null
 }
 
+const HELP_GROUPS: Array<{ key: string; slugs: string[] }> = [
+  { key: "pre-sale", slugs: ["buying-guide", "account-guide", "usage-notes"] },
+  { key: "delivery", slugs: ["payment", "delivery", "order-query-guide"] },
+  { key: "after-sale", slugs: ["refund", "risk-review", "contact-support"] },
+  { key: "faq", slugs: ["faq"] },
+]
+
+export function getHelpGroupKey(slug: string) {
+  return HELP_GROUPS.find((group) => group.slugs.includes(slug))?.key || "general"
+}
+
+export function getRelatedHelpArticles(slug: string, limit = 3) {
+  const groupKey = getHelpGroupKey(slug)
+  const sameGroup = helpArticles.filter((item) => item.slug !== slug && getHelpGroupKey(item.slug) === groupKey)
+  if (sameGroup.length >= limit) return sameGroup.slice(0, limit)
+
+  const fallback = helpArticles.filter((item) => item.slug !== slug && !sameGroup.some((same) => same.slug === item.slug))
+  return [...sameGroup, ...fallback].slice(0, limit)
+}
+
