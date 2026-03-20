@@ -20,9 +20,16 @@ export default async function FeedPage() {
     getTopicArticles().catch(() => []),
     getBlogArticles().catch(() => []),
   ])
+  const latestBlogs = blogs.slice(0, 3)
+  const latestTopics = topics.slice(0, 3)
   const latestUpdates = [...topics.map((item) => ({ ...item, href: `/topics/${item.slug}`, type: "专题" })), ...blogs.map((item) => ({ ...item, href: `/blog/${item.slug}`, type: "博客" }))]
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, 6)
+  const stats = [
+    { label: "专题文章", value: topics.length, href: "/topics" },
+    { label: "博客文章", value: blogs.length, href: "/blog" },
+    { label: "帮助入口", value: 4, href: "/help" },
+  ]
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -30,6 +37,17 @@ export default async function FeedPage() {
         <p className="text-sm text-muted-foreground">内容中心</p>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">内容索引与 RSS 订阅入口</h1>
         <p className="text-base text-muted-foreground">统一汇总站点的帮助、专题、博客与订阅入口，方便用户和搜索引擎继续发现购买指南、FAQ 与更新内容。</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {stats.map((item) => (
+          <Link key={item.label} href={item.href} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">{item.label}</p>
+              <p className="text-3xl font-bold text-foreground">{item.value}</p>
+            </div>
+          </Link>
+        ))}
       </div>
 
       <SeoLinkSection
@@ -60,32 +78,31 @@ export default async function FeedPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {latestUpdates.map((item) => (
               <Link key={`${item.type}-${item.slug}`} href={item.href} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40">
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-primary">{item.type}</p>
-                  <h3 className="text-base font-semibold text-foreground">{item.title}</h3>
-                  <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
-                </div>
+                <div className="space-y-2"><p className="text-xs font-medium text-primary">{item.type}</p><h3 className="text-base font-semibold text-foreground">{item.title}</h3><p className="text-sm leading-6 text-muted-foreground">{item.description}</p></div>
               </Link>
             ))}
           </div>
         </section>
       ) : null}
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="mb-4 space-y-1"><h2 className="text-lg font-semibold text-foreground">最新博客</h2><p className="text-sm text-muted-foreground">查看公告、上新说明与购买建议。</p></div>
+          <div className="space-y-3">
+            {latestBlogs.map((item) => <Link key={item.slug} href={`/blog/${item.slug}`} className="block rounded-xl border border-border/60 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{item.title}</Link>)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="mb-4 space-y-1"><h2 className="text-lg font-semibold text-foreground">最新专题</h2><p className="text-sm text-muted-foreground">继续浏览购买指南、教程与售后专题。</p></div>
+          <div className="space-y-3">
+            {latestTopics.map((item) => <Link key={item.slug} href={`/topics/${item.slug}`} className="block rounded-xl border border-border/60 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{item.title}</Link>)}
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">专题 RSS</h2>
-            <p className="text-sm text-muted-foreground">订阅购买指南、发货说明、售后建议等内容更新。</p>
-            <Link href="/topics/rss.xml" className="text-sm text-primary hover:underline">/topics/rss.xml</Link>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">博客 RSS</h2>
-            <p className="text-sm text-muted-foreground">订阅公告、上新说明、购买建议与内容更新。</p>
-            <Link href="/blog/rss.xml" className="text-sm text-primary hover:underline">/blog/rss.xml</Link>
-          </div>
-        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="space-y-2"><h2 className="text-lg font-semibold text-foreground">专题 RSS</h2><p className="text-sm text-muted-foreground">订阅购买指南、发货说明、售后建议等内容更新。</p><Link href="/topics/rss.xml" className="text-sm text-primary hover:underline">/topics/rss.xml</Link></div></div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="space-y-2"><h2 className="text-lg font-semibold text-foreground">博客 RSS</h2><p className="text-sm text-muted-foreground">订阅公告、上新说明、购买建议与内容更新。</p><Link href="/blog/rss.xml" className="text-sm text-primary hover:underline">/blog/rss.xml</Link></div></div>
       </div>
 
       <SeoLinkSection
@@ -100,4 +117,3 @@ export default async function FeedPage() {
     </div>
   )
 }
-

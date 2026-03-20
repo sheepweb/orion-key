@@ -42,6 +42,30 @@ function resolveContentSubtitle(path: string) {
   return "数字商品自动发货 · 购买指南 · 帮助内容"
 }
 
+function resolveContentEyebrow(path: string) {
+  if (path.startsWith("/blog")) return "BLOG"
+  if (path.startsWith("/topics")) return "TOPICS"
+  if (path.startsWith("/help")) return "HELP"
+  if (path.startsWith("/product-tag")) return "TAG"
+  return "ORION KEY"
+}
+
+function resolveContentMeta(path: string) {
+  if (path.startsWith("/blog")) return "公告 / 上新 / 内容更新"
+  if (path.startsWith("/topics")) return "购买指南 / 教程 / 售后说明"
+  if (path.startsWith("/help")) return "FAQ / 支付 / 发货 / 售后"
+  if (path.startsWith("/product-tag")) return "标签聚合 / 商品发现 / 内链"
+  return "数字商品 / 自动发货 / 内容中心"
+}
+
+function resolveContentTag(path: string) {
+  if (path.startsWith("/blog")) return "博客公告"
+  if (path.startsWith("/topics")) return "专题内容"
+  if (path.startsWith("/help")) return "帮助中心"
+  if (path.startsWith("/product-tag")) return "商品标签"
+  return "数字商品"
+}
+
 function buildDynamicOgUrl(path: string, title: string, siteName: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const params = new URLSearchParams({
@@ -50,6 +74,9 @@ function buildDynamicOgUrl(path: string, title: string, siteName: string) {
     siteName,
     variant: resolveContentVariant(path),
     subtitle: resolveContentSubtitle(path),
+    eyebrow: resolveContentEyebrow(path),
+    meta: resolveContentMeta(path),
+    tag: resolveContentTag(path),
   })
   return `${baseUrl}/og?${params.toString()}`
 }

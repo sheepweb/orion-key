@@ -78,3 +78,19 @@ export function getRelatedHelpArticles(slug: string, limit = 3) {
   return [...sameGroup, ...fallback].slice(0, limit)
 }
 
+export function getHelpGroupArticles(slug: string) {
+  const groupKey = getHelpGroupKey(slug)
+  return helpArticles.filter((item) => getHelpGroupKey(item.slug) === groupKey)
+}
+
+export function getHelpPrevNextArticle(slug: string) {
+  const groupArticles = getHelpGroupArticles(slug)
+  const currentIndex = groupArticles.findIndex((item) => item.slug === slug)
+  if (currentIndex === -1) return { prev: null, next: null }
+
+  return {
+    prev: groupArticles[currentIndex - 1] || null,
+    next: groupArticles[currentIndex + 1] || null,
+  }
+}
+

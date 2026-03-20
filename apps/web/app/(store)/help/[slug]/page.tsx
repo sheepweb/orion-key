@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { HelpPageLayout } from "@/components/store/help-page-layout"
-import { getHelpArticle, getRelatedHelpArticles, helpArticles } from "@/lib/help-content"
+import { getHelpArticle, getHelpGroupArticles, getHelpPrevNextArticle, getRelatedHelpArticles, helpArticles } from "@/lib/help-content"
 import { buildSeoMetadata } from "@/lib/seo"
 import { getSiteConfig } from "@/services/api-server"
 
@@ -41,6 +41,18 @@ export default async function HelpArticlePage({ params }: { params: Promise<{ sl
       }
     : null
 
+  const tocItems = article.sections.map((section, index) => ({
+    id: `section-${index + 1}`,
+    label: section.title,
+  }))
+  const { prev, next } = getHelpPrevNextArticle(article.slug)
+  const groupItems = getHelpGroupArticles(article.slug)
+    .filter((item) => item.slug !== article.slug)
+    .map((item) => ({
+      href: `/help/${item.slug}`,
+      label: item.title,
+      description: item.description,
+    }))
   const relatedItems = [
     { href: "/help", label: "返回帮助中心", description: "查看更多购买、支付、售后与使用说明" },
     ...getRelatedHelpArticles(article.slug, 3).map((item) => ({
@@ -55,8 +67,14 @@ export default async function HelpArticlePage({ params }: { params: Promise<{ sl
   return (
     <>
       {faqJsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} /> : null}
-      <HelpPageLayout article={article} relatedItems={relatedItems} />
+      <HelpPageLayout
+        article={article}
+        tocItems={tocItems}
+        groupItems={groupItems}
+        relatedItems={relatedItems}
+        prevItem={prev ? { href: `/help/${prev.slug}`, label: prev.title, description: prev.description } : null}
+        nextItem={next ? { href: `/help/${next.slug}`, label: next.title, description: next.description } : null}
+      />
     </>
   )
 }
-

@@ -3,19 +3,23 @@ import { ArrowLeft } from "lucide-react"
 import { SeoLinkSection } from "@/components/store/seo-link-section"
 import type { HelpArticle } from "@/lib/help-content"
 
+type LinkItem = { href: string; label: string; description: string }
+type TocItem = { id: string; label: string }
+
 type HelpPageLayoutProps = {
   article: HelpArticle
-  relatedItems?: Array<{ href: string; label: string; description: string }>
+  tocItems?: TocItem[]
+  groupItems?: LinkItem[]
+  relatedItems?: LinkItem[]
+  prevItem?: LinkItem | null
+  nextItem?: LinkItem | null
 }
 
-export function HelpPageLayout({ article, relatedItems = [] }: HelpPageLayoutProps) {
+export function HelpPageLayout({ article, tocItems = [], groupItems = [], relatedItems = [], prevItem, nextItem }: HelpPageLayoutProps) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <div className="space-y-3">
-        <Link
-          href="/help"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
+        <Link href="/help" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
           返回帮助中心
         </Link>
@@ -26,10 +30,25 @@ export function HelpPageLayout({ article, relatedItems = [] }: HelpPageLayoutPro
         </div>
       </div>
 
+      {tocItems.length > 1 ? (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground">本页目录</h2>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {tocItems.map((item) => (
+                <a key={item.id} href={`#${item.id}`} className="rounded-xl border border-border/60 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="space-y-8">
-          {article.sections.map((section) => (
-            <section key={section.title} className="space-y-3">
+          {article.sections.map((section, index) => (
+            <section key={section.title} id={tocItems[index]?.id} className="scroll-mt-24 space-y-3">
               <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
               <div className="space-y-3 text-sm leading-7 text-muted-foreground sm:text-base">
                 {section.paragraphs.map((paragraph) => (
@@ -41,6 +60,14 @@ export function HelpPageLayout({ article, relatedItems = [] }: HelpPageLayoutPro
         </div>
       </div>
 
+      {prevItem || nextItem ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {prevItem ? <Link href={prevItem.href} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"><div className="space-y-2"><p className="text-xs font-medium text-muted-foreground">上一篇</p><h3 className="text-base font-semibold text-foreground">{prevItem.label}</h3><p className="text-sm text-muted-foreground">{prevItem.description}</p></div></Link> : <div className="hidden md:block" />}
+          {nextItem ? <Link href={nextItem.href} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"><div className="space-y-2"><p className="text-xs font-medium text-muted-foreground">下一篇</p><h3 className="text-base font-semibold text-foreground">{nextItem.label}</h3><p className="text-sm text-muted-foreground">{nextItem.description}</p></div></Link> : null}
+        </div>
+      ) : null}
+
+      {groupItems.length > 0 ? <SeoLinkSection title="同组继续阅读" items={groupItems} /> : null}
       {relatedItems.length > 0 ? <SeoLinkSection title="相关阅读与继续探索" items={relatedItems} /> : null}
     </div>
   )
