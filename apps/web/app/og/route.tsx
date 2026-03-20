@@ -34,6 +34,8 @@ export async function GET(request: Request) {
     const eyebrow = (searchParams.get("eyebrow") || "ORION KEY").slice(0, 20)
     const meta = (searchParams.get("meta") || "数字商品 / 自动发货 / 内容中心").slice(0, 36)
     const tag = (searchParams.get("tag") || label).slice(0, 16)
+    const badge = variant === "help" && eyebrow === "FAQ" ? "常见问题" : variant === "default" && eyebrow === "FEED" ? "内容中心" : theme.badge
+    const frameLabel = variant === "help" && eyebrow === "FAQ" ? "FAQ 卡片" : variant === "default" && eyebrow === "FEED" ? "内容入口" : theme.frameLabel
     const isRightAligned = theme.align === "flex-end"
 
     return new ImageResponse(
@@ -44,11 +46,11 @@ export async function GET(request: Request) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", zIndex: 1 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: theme.align }}>
                 <div style={{ fontSize: 20, letterSpacing: "0.2em", color: "rgba(255,255,255,0.68)" }}>{eyebrow}</div>
-                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", alignSelf: theme.align, borderRadius: "999px", padding: "12px 22px", background: theme.accent, fontSize: 24 }}>{theme.badge}</div>
+                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", alignSelf: theme.align, borderRadius: "999px", padding: "12px 22px", background: theme.accent, fontSize: 24 }}>{badge}</div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
                 <div style={{ display: "inline-flex", alignItems: "center", borderRadius: "24px", padding: "14px 20px", background: "rgba(255,255,255,0.10)", fontSize: 24 }}>{variant.toUpperCase()}</div>
-                <div style={{ fontSize: 18, color: "rgba(255,255,255,0.64)" }}>{theme.frameLabel}</div>
+                <div style={{ fontSize: 18, color: "rgba(255,255,255,0.64)" }}>{frameLabel}</div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: theme.align, gap: 18, zIndex: 1, textAlign: isRightAligned ? "right" : "left" }}>

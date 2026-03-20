@@ -8,8 +8,8 @@ import { getSiteConfig } from "@/services/api-server"
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfig().catch(() => null)
   return buildSeoMetadata({
-    title: "内容订阅",
-    description: "集中查看专题 RSS、博客 RSS 与内容入口，方便持续追踪站点更新。",
+    title: "内容中心与更新订阅",
+    description: "集中查看最近更新、专题内容、博客公告与 RSS 订阅入口，方便持续追踪站点内容变化。",
     path: "/feed",
     siteConfig: config,
   })
@@ -95,7 +95,7 @@ export default async function FeedPage() {
       />
 
       <SeoLinkSection
-        title="内容跳转导航"
+        title="下一步去哪里"
         items={[
           { href: "/blog", label: "先看博客公告", description: "适合查看站点更新、上新说明与最新公告" },
           { href: "/topics", label: "继续看专题内容", description: "适合系统浏览购买指南、教程与售后说明" },
@@ -171,7 +171,7 @@ export default async function FeedPage() {
       </div>
 
       <SeoLinkSection
-        title="内容导航"
+        title="最后还可以看"
         items={[
           { href: "/blog", label: "博客公告", description: "查看站点公告、购买建议与更新说明" },
           { href: "/topics", label: "专题内容", description: "查看购买指南、售后说明与教程专题" },

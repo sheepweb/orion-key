@@ -9,8 +9,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfig().catch(() => null)
 
   return buildSeoMetadata({
-    title: "帮助中心",
-    description: "查看支付说明、发货说明、售后退款、常见问题、订单查询与购买指南等帮助内容。",
+    title: "帮助中心问题导航",
+    description: "集中查看购买前说明、支付排查、发货确认、售后退款、订单查询与常见问题等帮助内容。",
     path: "/help",
     siteConfig: config,
   })
@@ -50,7 +50,7 @@ export default function HelpCenterPage() {
         <p className="text-base text-muted-foreground">这里整理了支付、发货、售后、FAQ、订单查询与购买指南，方便用户快速找到答案。</p>
       </div>
 
-      <SeoLinkSection title="帮助中心快捷入口" items={quickLinks} />
+      <SeoLinkSection title="如果你现在要……" items={quickLinks} />
       <SeoLinkSection title="按问题类型进入" items={scenarioLinks} />
 
       <section className="space-y-3">
@@ -104,7 +104,7 @@ export default function HelpCenterPage() {
         </section>
       ))}
 
-      <SeoLinkSection title="继续探索" items={[
+      <SeoLinkSection title="下一步去哪里" items={[
         { href: "/topics", label: "专题内容", description: "继续浏览购买、发货与售后专题内容" },
         { href: "/blog", label: "博客公告", description: "继续查看公告、更新说明与选购建议" },
         { href: "/help/contact-support", label: "联系我们", description: "联系客服前先准备订单号、问题描述与截图" },

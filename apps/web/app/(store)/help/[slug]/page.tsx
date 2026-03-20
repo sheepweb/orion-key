@@ -16,8 +16,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const config = await getSiteConfig().catch(() => null)
 
   return buildSeoMetadata({
-    title: article.title,
-    description: article.description,
+    title: slug === "faq" ? "常见问题 FAQ" : `${article.title} - 帮助说明`,
+    description: slug === "faq" ? "快速查看支付、发货、售后、订单查询与购买流程相关的高频问题和处理建议。" : `${article.description} 适合在购买、支付、发货或售后处理中快速定位下一步操作。`,
     path: `/help/${article.slug}`,
     type: "article",
     siteConfig: config,
