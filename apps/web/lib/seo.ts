@@ -26,30 +26,18 @@ function resolveContentLabel(path: string) {
   return "数字商品"
 }
 
-function buildAutoCover(path: string, title: string, siteName: string) {
-  const label = resolveContentLabel(path)
-  const safeTitle = encodeURIComponent(title)
-  const safeLabel = encodeURIComponent(label)
-  const safeSiteName = encodeURIComponent(siteName)
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#111827" />
-          <stop offset="100%" stop-color="#2563eb" />
-        </linearGradient>
-      </defs>
-      <rect width="1200" height="630" fill="url(#bg)" rx="32" />
-      <rect x="72" y="72" width="180" height="44" rx="22" fill="rgba(255,255,255,0.12)" />
-      <text x="162" y="101" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#ffffff">${label}</text>
-      <text x="72" y="230" font-family="Arial, sans-serif" font-size="64" font-weight="700" fill="#ffffff">${title.slice(0, 28)}</text>
-      <text x="72" y="530" font-family="Arial, sans-serif" font-size="28" fill="rgba(255,255,255,0.82)">${siteName}</text>
-    </svg>`
-  )}`.replace(safeTitle, safeTitle).replace(safeLabel, safeLabel).replace(safeSiteName, safeSiteName)
+function buildDynamicOgUrl(path: string, title: string, siteName: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const params = new URLSearchParams({
+    title,
+    label: resolveContentLabel(path),
+    siteName,
+  })
+  return `${baseUrl}/og?${params.toString()}`
 }
 
 function resolveFallbackImage(path: string, title: string, siteName: string, siteConfig?: Partial<SiteConfig> | null) {
-  return siteConfig?.seo_og_image || buildAutoCover(path, title, siteName) || siteConfig?.logo_url || undefined
+  return siteConfig?.seo_og_image || buildDynamicOgUrl(path, title, siteName) || siteConfig?.logo_url || undefined
 }
 
 export function buildTitleTemplate(siteConfig?: Partial<SiteConfig> | null, siteName?: string) {

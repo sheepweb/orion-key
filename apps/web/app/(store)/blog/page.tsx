@@ -31,6 +31,7 @@ export default async function BlogListPage() {
     { href: "/", label: "返回首页", description: "继续浏览商品与分类" },
     { href: "/topics", label: "专题内容", description: "查看购买指南、售后说明等专题页" },
     { href: "/help", label: "帮助中心", description: "查看支付、发货与退款说明" },
+    { href: "/feed", label: "内容订阅", description: "集中查看 RSS 订阅入口与内容聚合页" },
     { href: "/blog/rss.xml", label: "订阅 RSS", description: "通过 RSS 持续获取博客公告更新" },
   ]
 

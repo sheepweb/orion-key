@@ -19,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const defaultDescription = config?.seo_default_description || config?.site_description || config?.site_slogan || "Orion Key 提供数字商品自动发货、订单查询、支付说明与售后帮助等完整服务。"
   const ogTitle = config?.seo_og_title || defaultTitle
   const ogDescription = config?.seo_og_description || defaultDescription
-  const ogImage = config?.seo_og_image || config?.logo_url
+  const ogParams = new URLSearchParams({ title: ogTitle, label: "数字商品", siteName })
+  const ogImage = config?.seo_og_image || config?.logo_url || `${baseUrl}/og?${ogParams.toString()}`
 
   return {
     metadataBase: new URL(baseUrl),

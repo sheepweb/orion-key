@@ -24,6 +24,8 @@ export default async function TopicListPage() {
   const quickLinks = [
     { href: "/", label: "返回首页", description: "继续浏览商品与分类" },
     { href: "/help", label: "帮助中心", description: "查看 FAQ、支付说明与售后说明" },
+    { href: "/feed", label: "内容订阅", description: "集中查看 RSS 订阅入口与内容聚合页" },
+    { href: "/topics/rss.xml", label: "专题 RSS", description: "通过 RSS 跟踪购买指南与专题内容更新" },
   ]
   const groupedSections = Array.from(new Set(articles.map((article) => article.section || "专题"))).map((section) => ({
     section,
