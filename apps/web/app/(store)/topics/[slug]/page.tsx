@@ -38,8 +38,14 @@ export default async function TopicDetailPage({ params }: { params: Promise<{ sl
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const tagLinks = article.tags.map((tag) => allTags.find((item) => item.name === tag)).filter(Boolean)
   const sameTagArticles = allArticles.filter((item) => item.slug !== article.slug && item.tags.some((tag) => article.tags.includes(tag))).slice(0, 3)
-  const sameSectionArticles = allArticles.filter((item) => item.slug !== article.slug && item.section === article.section).slice(0, 3)
-  const beginnerArticles = allArticles.filter((item) => item.slug !== article.slug && item.tags.some((tag) => BEGINNER_TAGS.includes(tag))).slice(0, 3)
+  const sameTagSlugs = new Set(sameTagArticles.map((item) => item.slug))
+  const sameSectionArticles = allArticles
+    .filter((item) => item.slug !== article.slug && item.section === article.section && !sameTagSlugs.has(item.slug))
+    .slice(0, 3)
+  const recommendedSlugs = new Set([...sameTagSlugs, ...sameSectionArticles.map((item) => item.slug)])
+  const beginnerArticles = allArticles
+    .filter((item) => item.slug !== article.slug && item.tags.some((tag) => BEGINNER_TAGS.includes(tag)) && !recommendedSlugs.has(item.slug))
+    .slice(0, 3)
   const relatedBlogs = blogArticles.filter((item) => item.tags.some((tag) => article.tags.includes(tag)) || (item.section && item.section === article.section)).slice(0, 3)
 
   const breadcrumbJsonLd = {

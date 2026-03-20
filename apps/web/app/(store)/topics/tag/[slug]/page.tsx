@@ -22,8 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!tag) return { title: "标签不存在" }
 
   return buildSeoMetadata({
-    title: `${tag.name} 专题`,
-    description: `查看 ${tag.name} 相关专题内容，快速聚合购买指南、发货说明与售后建议。`,
+    title: `${tag.name} 专题标签聚合`,
+    description: `集中查看 ${tag.name} 相关专题内容，快速聚合购买指南、发货说明与售后建议。`,
     path: `/topics/tag/${tag.slug}`,
     siteConfig: config,
   })
@@ -39,17 +39,24 @@ export default async function TopicTagPage({ params }: { params: Promise<{ slug:
 
   if (!tag || articles.length === 0) notFound()
 
+  const featuredArticles = articles.slice(0, 3)
+  const relatedTags = tags
+    .filter((item) => item.slug !== tag.slug)
+    .slice(0, 4)
+    .map((item) => ({
+      href: `/topics/tag/${item.slug}`,
+      label: `#${item.name}`,
+      description: `查看 ${item.name} 标签下的专题内容`,
+    }))
   const relatedItems = [
     { href: "/topics", label: "返回专题列表", description: "浏览全部购买与售后专题" },
     { href: "/help", label: "帮助中心", description: "查看 FAQ、支付说明与售后说明" },
-    ...tags
-      .filter((item) => item.slug !== tag.slug)
-      .slice(0, 4)
-      .map((item) => ({
-        href: `/topics/tag/${item.slug}`,
-        label: `#${item.name}`,
-        description: `查看 ${item.name} 标签下的专题内容`,
-      })),
+    ...relatedTags,
+  ]
+  const nextSteps = [
+    featuredArticles[0] ? { href: `/topics/${featuredArticles[0].slug}`, label: `先看：${featuredArticles[0].title}`, description: featuredArticles[0].description } : { href: "/topics", label: "先看专题列表", description: "按专题总览继续浏览购买、发货与售后内容" },
+    { href: "/help/faq", label: "再看常见问题 FAQ", description: "如果你想先确认高频问题与现成答案，优先查看 FAQ" },
+    { href: "/feed", label: "最后回到内容中心", description: "按内容类型继续查看专题、博客与 RSS 入口" },
   ]
 
   return (
@@ -62,7 +69,23 @@ export default async function TopicTagPage({ params }: { params: Promise<{ slug:
         </p>
       </div>
 
-      <SeoLinkSection title="继续浏览" items={relatedItems} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">这个标签适合先看什么</h2>
+            <p className="text-sm leading-6 text-muted-foreground">适合想围绕 #{tag.name} 快速了解购买步骤、交付说明与售后边界的用户优先浏览。</p>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">你接下来可以怎么读</h2>
+            <p className="text-sm leading-6 text-muted-foreground">建议先看代表性专题，再切换到 FAQ 或内容中心，避免只停留在单一标签页。</p>
+          </div>
+        </div>
+      </div>
+
+      <SeoLinkSection title="先看什么" items={nextSteps} />
+      <SeoLinkSection title="相关标签与继续浏览" items={relatedItems} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {articles.map((article) => (

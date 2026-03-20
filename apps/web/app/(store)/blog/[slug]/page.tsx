@@ -36,7 +36,10 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const tagLinks = article.tags.map((tag) => allTags.find((item) => item.slug === slugifyTag(tag))).filter(Boolean)
   const sameTagArticles = allArticles.filter((item) => item.slug !== article.slug && item.tags.some((tag) => article.tags.includes(tag))).slice(0, 3)
-  const sameSectionArticles = allArticles.filter((item) => item.slug !== article.slug && item.section && item.section === article.section).slice(0, 3)
+  const sameTagSlugs = new Set(sameTagArticles.map((item) => item.slug))
+  const sameSectionArticles = allArticles
+    .filter((item) => item.slug !== article.slug && item.section && item.section === article.section && !sameTagSlugs.has(item.slug))
+    .slice(0, 3)
   const relatedTopics = topicArticles.filter((item) => item.tags.some((tag) => article.tags.includes(tag)) || (item.section && item.section === article.section)).slice(0, 3)
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
