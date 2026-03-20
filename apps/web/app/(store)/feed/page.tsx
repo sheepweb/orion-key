@@ -64,14 +64,13 @@ export default async function FeedPage() {
 
       <SeoLinkSection title="如果你现在要……" items={actionPaths} />
       <SeoLinkSection title="推荐阅读路径" items={readingRoutes} />
-
       <SeoLinkSection
-        title="从哪里开始看"
+        title="下一步去哪里"
         items={[
-          { href: "/help/buying-guide", label: "购买前先看什么", description: "先看购买流程、资料填写要求与下单前注意事项" },
-          { href: "/help/payment", label: "支付遇到问题怎么办", description: "查看支付到账、页面未刷新与支付异常处理建议" },
-          { href: "/help/delivery", label: "发货后如何确认结果", description: "了解自动发货时效、未收到货与订单状态说明" },
-          { href: "/help/refund", label: "售后问题如何处理", description: "查看退款边界、售后范围与提交问题时的建议" },
+          { href: "/help", label: "先去帮助中心", description: "适合按问题类型快速进入 FAQ、支付、发货与售后说明" },
+          { href: "/topics", label: "继续看专题内容", description: "适合系统浏览购买指南、教程与售后说明" },
+          { href: "/blog", label: "再看博客公告", description: "适合查看站点更新、上新说明与最新公告" },
+          { href: "/topics/rss.xml", label: "订阅专题 RSS", description: "想持续追踪长内容更新，可直接订阅专题 RSS" },
         ]}
       />
 
@@ -91,16 +90,6 @@ export default async function FeedPage() {
           { href: "/help/delivery", label: "发货说明", description: "了解自动发货、时效与未收到货的处理建议" },
           { href: "/help/refund", label: "售后与退款", description: "查看售后边界、退款原则与提交建议" },
           { href: "/help/order-query-guide", label: "订单查询说明", description: "了解订单查询入口、状态说明与异常处理" },
-        ]}
-      />
-
-      <SeoLinkSection
-        title="下一步去哪里"
-        items={[
-          { href: "/blog", label: "先看博客公告", description: "适合查看站点更新、上新说明与最新公告" },
-          { href: "/topics", label: "继续看专题内容", description: "适合系统浏览购买指南、教程与售后说明" },
-          { href: "/help", label: "直接去帮助中心", description: "适合按问题类型快速进入 FAQ、支付、发货与售后说明" },
-          { href: "/topics/rss.xml", label: "订阅专题 RSS", description: "想持续追踪长内容更新，可直接订阅专题 RSS" },
         ]}
       />
 

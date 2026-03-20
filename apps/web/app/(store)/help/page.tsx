@@ -18,10 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function HelpCenterPage() {
   const quickLinks = [
-    { href: "/", label: "返回首页", description: "继续浏览分类与商品列表" },
-    { href: "/help/faq", label: "常见问题 FAQ", description: "快速查看下单、支付、发货与售后的高频问题" },
-    { href: "/topics", label: "购买与售后专题", description: "查看更多专题型内容页与长尾指南" },
-    { href: "/blog", label: "博客公告", description: "查看公告、上新说明与购买建议" },
+    { href: "/help/buying-guide", label: "我准备下单", description: "先看购买流程、资料准备与下单前注意事项" },
+    { href: "/help/payment", label: "支付遇到问题", description: "优先排查支付到账、页面未刷新与支付异常场景" },
+    { href: "/help/delivery", label: "发货后还没收到", description: "查看自动发货时效、订单状态与未收到货的处理建议" },
+    { href: "/help/faq", label: "先查常见问题 FAQ", description: "快速查看下单、支付、发货与售后的高频问题" },
   ]
   const scenarioLinks = [
     { href: "/help/buying-guide", label: "购买前要看什么", description: "先了解下单流程、资料准备与常见限制" },
@@ -51,6 +51,7 @@ export default function HelpCenterPage() {
       </div>
 
       <SeoLinkSection title="如果你现在要……" items={quickLinks} />
+      <SeoLinkSection title="推荐阅读路径" items={recommendedPath} />
       <SeoLinkSection title="按问题类型进入" items={scenarioLinks} />
 
       <section className="space-y-3">
@@ -105,10 +106,10 @@ export default function HelpCenterPage() {
       ))}
 
       <SeoLinkSection title="下一步去哪里" items={[
-        { href: "/topics", label: "专题内容", description: "继续浏览购买、发货与售后专题内容" },
-        { href: "/blog", label: "博客公告", description: "继续查看公告、更新说明与选购建议" },
-        { href: "/help/contact-support", label: "联系我们", description: "联系客服前先准备订单号、问题描述与截图" },
-        { href: "/feed", label: "内容中心", description: "返回内容索引页查看 RSS 与内容导航" },
+        { href: "/topics", label: "继续看专题内容", description: "适合系统浏览购买、发货与售后专题内容" },
+        { href: "/blog", label: "再看博客公告", description: "适合查看公告、更新说明与选购建议" },
+        { href: "/feed", label: "回到内容中心", description: "按内容类型继续查看 RSS、专题与博客入口" },
+        { href: "/help/contact-support", label: "仍未解决？联系支持前先准备信息", description: "联系客服前先准备订单号、问题描述与截图" },
       ]} />
     </div>
   )

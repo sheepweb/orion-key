@@ -79,7 +79,7 @@ export function HelpPageLayout({ article, tocItems = [], groupItems = [], relate
         </div>
       </div>
 
-      {nextSteps.length > 0 ? <SeoLinkSection title="下一步建议" items={nextSteps} /> : null}
+      {nextSteps.length > 0 ? <SeoLinkSection title="下一步去哪里" items={nextSteps} /> : null}
 
       {prevItem || nextItem ? (
         <div className="grid gap-4 md:grid-cols-2">
