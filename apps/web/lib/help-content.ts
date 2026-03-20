@@ -52,6 +52,16 @@ export const helpArticles: HelpArticle[] = [
     { title: "联系前准备", paragraphs: ["建议准备订单号、问题描述和相关截图。", "信息越完整，越有助于快速定位问题。"] },
     { title: "支持建议", paragraphs: ["非紧急问题可先查看 FAQ、支付说明和售后说明。", "若仍无法解决，再通过站点支持渠道联系人工处理。"] },
   ] },
+  { slug: "payment-status-not-updated", title: "支付成功但页面未刷新说明", description: "说明支付完成后页面未立即更新时的常见原因，以及如何避免重复付款。", sections: [
+    { title: "先查订单状态", paragraphs: ["支付成功后页面没刷新，不一定代表付款失败。", "建议优先回订单页或订单查询页确认是否已经显示已支付或处理中。"] },
+    { title: "不要重复付款", paragraphs: ["只要支付记录已经存在，就不要因为页面未跳转而再次付款。", "重复支付往往会增加后续核对和退款沟通成本。"] },
+    { title: "何时联系支持", paragraphs: ["若较长时间仍未更新，再整理订单号、支付时间和截图联系客服。", "先核对订单、再联系支持，通常比重复下单更稳妥。"] },
+  ] },
+  { slug: "support-info-preparation", title: "联系客服前的信息准备说明", description: "整理联系客服前最值得先准备的订单信息、截图与问题描述，提高处理效率。", sections: [
+    { title: "基础信息", paragraphs: ["建议先准备订单号、下单时间、商品名称和支付渠道。", "没有订单号时，很多问题都难以快速定位。"] },
+    { title: "问题描述", paragraphs: ["尽量明确说明是未到账、信息填写错误、商品无法使用还是页面未刷新。", "越具体的描述，越有助于减少来回补充信息。"] },
+    { title: "截图与补充材料", paragraphs: ["可同步准备错误提示截图、订单状态截图和支付记录截图。", "如果你已经做过自查，也建议一并说明，便于支持人员快速判断。"] },
+  ] },
 ]
 
 export function getHelpArticle(slug: string) {
@@ -60,8 +70,8 @@ export function getHelpArticle(slug: string) {
 
 const HELP_GROUPS: Array<{ key: string; slugs: string[] }> = [
   { key: "pre-sale", slugs: ["buying-guide", "account-guide", "usage-notes"] },
-  { key: "delivery", slugs: ["payment", "delivery", "order-query-guide"] },
-  { key: "after-sale", slugs: ["refund", "risk-review", "contact-support"] },
+  { key: "delivery", slugs: ["payment", "delivery", "order-query-guide", "payment-status-not-updated"] },
+  { key: "after-sale", slugs: ["refund", "risk-review", "contact-support", "support-info-preparation"] },
   { key: "faq", slugs: ["faq"] },
 ]
 
