@@ -93,6 +93,7 @@ export interface ProductCard {
   seo_title?: string
   seo_description?: string
   seo_keywords?: string
+  tags?: string[]
   cover_url?: string
   base_price: number
   currency?: string
@@ -282,6 +283,13 @@ export interface SiteConfig {
   site_description?: string
   logo_url?: string
   favicon_url?: string
+  seo_default_title?: string
+  seo_default_description?: string
+  seo_default_keywords?: string
+  seo_og_title?: string
+  seo_og_description?: string
+  seo_og_image?: string
+  seo_title_template?: string
   announcement_enabled: boolean
   announcement?: string
   popup_enabled: boolean

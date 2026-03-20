@@ -1,23 +1,23 @@
 import { getProducts, getCategories, getSiteConfig } from "@/services/api-server"
 import { HomeContent } from "./home-content"
+import { buildSeoMetadata } from "@/lib/seo"
 import type { Metadata } from "next"
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const config = await getSiteConfig()
-    return {
-      title: config.site_name || "Orion Key",
-      description: config.site_description || config.site_slogan || "",
-      alternates: { canonical: "/" },
-      openGraph: {
-        title: config.site_name || "Orion Key",
-        description: config.site_description || config.site_slogan || "",
-        url: "/",
-        ...(config.logo_url ? { images: [{ url: config.logo_url }] } : {}),
-      },
-    }
+    return buildSeoMetadata({
+      title: config.seo_default_title || config.site_name || "Orion Key",
+      description: config.seo_default_description || config.site_description || config.site_slogan || "数字商品自动发货平台",
+      path: "/",
+      siteName: config.site_name || "Orion Key",
+      defaultTitle: config.site_name || "Orion Key",
+      defaultDescription: config.site_description || config.site_slogan || "数字商品自动发货平台",
+      imageUrl: config.logo_url,
+      siteConfig: config,
+    })
   } catch {
-    return { title: "Orion Key" }
+    return buildSeoMetadata({ title: "Orion Key", description: "数字商品自动发货平台", path: "/" })
   }
 }
 

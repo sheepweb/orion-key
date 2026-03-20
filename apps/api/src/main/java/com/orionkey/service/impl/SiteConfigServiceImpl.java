@@ -30,13 +30,18 @@ public class SiteConfigServiceImpl implements SiteConfigService {
             "site_name", "site_slogan", "site_description", "logo_url", "favicon_url",
             "announcement_enabled", "announcement", "popup_enabled", "popup_content",
             "contact_email", "contact_telegram", "contact_telegram_group", "points_enabled", "points_rate",
-            "maintenance_enabled", "maintenance_message", "footer_text", "github_url", "custom_css"
+            "maintenance_enabled", "maintenance_message", "footer_text", "github_url", "custom_css",
+            "seo_default_title", "seo_default_description", "seo_default_keywords", "seo_og_title", "seo_og_description",
+            "seo_og_image", "seo_title_template"
     );
 
     /** F16: 管理员允许编辑的配置键白名单 — 防止写入系统内部键或注入任意配置 */
     private static final Set<String> EDITABLE_KEYS = Set.of(
             // 站点基础
             "site_name", "site_slogan", "site_description", "logo_url", "favicon_url",
+            // SEO
+            "seo_default_title", "seo_default_description", "seo_default_keywords", "seo_og_title", "seo_og_description",
+            "seo_og_image", "seo_title_template",
             // 公告 / 弹窗
             "announcement_enabled", "announcement", "popup_enabled", "popup_content",
             // 联系方式

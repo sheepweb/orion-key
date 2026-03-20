@@ -22,7 +22,7 @@ function validateImageFile(file: File): string | null {
   return null
 }
 
-type TabKey = "basic" | "announcement" | "points" | "contact" | "maintenance"
+type TabKey = "basic" | "seo" | "announcement" | "points" | "contact" | "maintenance"
 
 export default function AdminSiteConfigPage() {
   const { t } = useLocale()
@@ -121,6 +121,7 @@ export default function AdminSiteConfigPage() {
       <div className="flex gap-1 overflow-x-auto border-b border-border">
         {([
           { key: "basic" as const, label: t("admin.basicInfo") },
+          { key: "seo" as const, label: "SEO 设置" },
           { key: "announcement" as const, label: t("admin.announcementTab") },
           { key: "points" as const, label: t("admin.pointsSettings") },
           { key: "contact" as const, label: t("admin.contactTab") },
@@ -233,6 +234,97 @@ export default function AdminSiteConfigPage() {
                 onChange={(e) => setValue("github_url", e.target.value)}
               />
               <p className="text-xs text-muted-foreground">{t("admin.githubUrlHint")}</p>
+            </div>
+            <button
+              type="button"
+              className="flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              <Save className="h-4 w-4" />
+              {saving ? t("admin.saving") : t("admin.saveSettings")}
+            </button>
+          </div>
+        </div>
+
+      {/* SEO */}
+      {tab === "seo" && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex max-w-2xl flex-col gap-5">
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+              这些字段将作为全站默认 SEO 来源，页面未单独设置时会自动回退到这里。
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">默认 SEO 标题</label>
+              <input
+                type="text"
+                className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                value={getValue("seo_default_title")}
+                onChange={(e) => setValue("seo_default_title", e.target.value)}
+                placeholder="Orion Key - 数字商品自动发货平台"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">默认 SEO 描述</label>
+              <textarea
+                className="min-h-20 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                value={getValue("seo_default_description")}
+                onChange={(e) => setValue("seo_default_description", e.target.value)}
+                placeholder="用于首页、帮助页、分类页等未单独配置时的默认描述"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">默认 SEO 关键词</label>
+              <textarea
+                className="min-h-20 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                value={getValue("seo_default_keywords")}
+                onChange={(e) => setValue("seo_default_keywords", e.target.value)}
+                placeholder="例如：数字商品,自动发货,ChatGPT账号,Claude账号"
+              />
+              <p className="text-xs text-muted-foreground">建议使用逗号分隔，作为页面未单独填写 keywords 时的默认回退值。</p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">OG 标题</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={getValue("seo_og_title")}
+                  onChange={(e) => setValue("seo_og_title", e.target.value)}
+                  placeholder="分享卡片默认标题"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Title 模板</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={getValue("seo_title_template")}
+                  onChange={(e) => setValue("seo_title_template", e.target.value)}
+                  placeholder="%s | Orion Key"
+                />
+                <p className="text-xs text-muted-foreground">使用 %s 作为页面标题占位符，例如：%s | Orion Key</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">OG 描述</label>
+              <textarea
+                className="min-h-20 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                value={getValue("seo_og_description")}
+                onChange={(e) => setValue("seo_og_description", e.target.value)}
+                placeholder="分享卡片默认描述"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">OG 图片 URL</label>
+              <input
+                type="text"
+                className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                value={getValue("seo_og_image")}
+                onChange={(e) => setValue("seo_og_image", e.target.value)}
+                placeholder="https://.../og-image.png"
+              />
+              <p className="text-xs text-muted-foreground">建议使用 1200 x 630 图片，页面未提供封面时会回退使用此图。</p>
             </div>
             <button
               type="button"

@@ -61,6 +61,7 @@ export default function AdminProductsPage() {
     seo_title: "",
     seo_description: "",
     seo_keywords: "",
+    tags: "",
     category_id: "",
     base_price: "",
     currency: "CNY",
@@ -156,6 +157,7 @@ export default function AdminProductsPage() {
       seo_title: product.seo_title || "",
       seo_description: product.seo_description || "",
       seo_keywords: product.seo_keywords || "",
+      tags: product.tags?.join(", ") || "",
       category_id: product.category_id,
       base_price: String(product.base_price),
       currency: product.currency || "CNY",
@@ -255,6 +257,7 @@ export default function AdminProductsPage() {
         seo_title: formData.seo_title || undefined,
         seo_description: formData.seo_description || undefined,
         seo_keywords: formData.seo_keywords || undefined,
+        tags: formData.tags || undefined,
         category_id: formData.category_id,
         base_price: basePrice,
         currency: formData.currency,
@@ -323,6 +326,7 @@ export default function AdminProductsPage() {
       seo_title: "",
       seo_description: "",
       seo_keywords: "",
+      tags: "",
       category_id: "",
       base_price: "",
       currency: "CNY",
@@ -587,6 +591,17 @@ export default function AdminProductsPage() {
                   value={formData.seo_keywords}
                   onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
                 />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">商品标签</label>
+                <input
+                  type="text"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="多个标签可用逗号分隔，如 热销, 即时发货"
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">用于前台详情页展示商品标签，也可辅助后续内容聚合。</p>
               </div>
               {/* 分类 + 货币类型 */}
               <div className="grid grid-cols-2 gap-4">

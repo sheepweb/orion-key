@@ -123,6 +123,7 @@ public class ProductServiceImpl implements ProductService {
         product.setSeoTitle((String) req.get("seo_title"));
         product.setSeoDescription((String) req.get("seo_description"));
         product.setSeoKeywords((String) req.get("seo_keywords"));
+        if (req.containsKey("tags")) product.setTags(normalizeTags(req.get("tags")));
         product.setCoverUrl((String) req.get("cover_url"));
         product.setBasePrice(new BigDecimal(req.get("base_price").toString()));
         if (req.containsKey("currency")) product.setCurrency((String) req.get("currency"));
@@ -162,6 +163,7 @@ public class ProductServiceImpl implements ProductService {
         if (req.containsKey("seo_title")) product.setSeoTitle((String) req.get("seo_title"));
         if (req.containsKey("seo_description")) product.setSeoDescription((String) req.get("seo_description"));
         if (req.containsKey("seo_keywords")) product.setSeoKeywords((String) req.get("seo_keywords"));
+        if (req.containsKey("tags")) product.setTags(normalizeTags(req.get("tags")));
         if (req.containsKey("cover_url")) product.setCoverUrl((String) req.get("cover_url"));
         if (req.containsKey("base_price")) product.setBasePrice(new BigDecimal(req.get("base_price").toString()));
         if (req.containsKey("currency")) product.setCurrency((String) req.get("currency"));
@@ -232,6 +234,36 @@ public class ProductServiceImpl implements ProductService {
         productSlugHistoryRepository.save(history);
     }
 
+    private String normalizeTags(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        Collection<?> source = raw instanceof Collection<?> collection
+                ? collection
+                : Arrays.asList(raw.toString().split(","));
+        LinkedHashSet<String> tags = new LinkedHashSet<>();
+        for (Object item : source) {
+            if (item == null) {
+                continue;
+            }
+            String value = item.toString().trim();
+            if (!value.isEmpty()) {
+                tags.add(value);
+            }
+        }
+        return tags.isEmpty() ? null : String.join(",", tags);
+    }
+
+    private List<String> splitTags(String tags) {
+        if (tags == null || tags.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(tags.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .toList();
+    }
 
 
     @Override
@@ -341,6 +373,7 @@ public class ProductServiceImpl implements ProductService {
         map.put("seo_title", p.getSeoTitle());
         map.put("seo_description", p.getSeoDescription());
         map.put("seo_keywords", p.getSeoKeywords());
+        map.put("tags", splitTags(p.getTags()));
         map.put("cover_url", p.getCoverUrl());
         map.put("base_price", p.getBasePrice());
         map.put("currency", p.getCurrency());
