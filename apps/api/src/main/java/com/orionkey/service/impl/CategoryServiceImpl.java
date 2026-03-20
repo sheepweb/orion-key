@@ -1,8 +1,10 @@
 package com.orionkey.service.impl;
 
 import com.orionkey.constant.ErrorCode;
+import com.orionkey.entity.CategorySlugHistory;
 import com.orionkey.entity.ProductCategory;
 import com.orionkey.exception.BusinessException;
+import com.orionkey.repository.CategorySlugHistoryRepository;
 import com.orionkey.repository.ProductCategoryRepository;
 import com.orionkey.repository.ProductRepository;
 import com.orionkey.service.CategoryService;
@@ -21,6 +23,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private static final String CACHE_CATEGORY_LIST = "categoryList";
 
+    private final CategorySlugHistoryRepository categorySlugHistoryRepository;
     private final ProductCategoryRepository categoryRepository;
     private final ProductRepository productRepository;
 
@@ -50,8 +53,8 @@ public class CategoryServiceImpl implements CategoryService {
                 : null;
         if (slug == null || slug.isEmpty()) {
             slug = generateUniqueCategorySlug(name);
-        } else if (categoryRepository.existsBySlugAndIsDeleted(slug, 0)) {
-            throw new BusinessException(ErrorCode.CATEGORY_SLUG_EXISTS, "分类 slug 已存在");
+        } else if (isCategorySlugOccupied(slug)) {
+            throw new BusinessException(ErrorCode.CATEGORY_SLUG_EXISTS, "分类 slug 已存在或已被历史记录占用");
         }
         ProductCategory category = new ProductCategory();
         category.setName(name);
@@ -70,6 +73,7 @@ public class CategoryServiceImpl implements CategoryService {
         ProductCategory category = categoryRepository.findById(id)
                 .filter(c -> c.getIsDeleted() == 0)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "分类不存在"));
+        String oldSlug = category.getSlug();
         if (req.containsKey("name")) {
             String name = (String) req.get("name");
             if (categoryRepository.existsByNameAndIdNotAndIsDeleted(name, id, 0)) {
@@ -80,8 +84,8 @@ public class CategoryServiceImpl implements CategoryService {
         if (req.containsKey("slug")) {
             String slug = req.get("slug") == null ? null : ((String) req.get("slug")).trim();
             if (slug != null && !slug.isEmpty()) {
-                if (categoryRepository.existsBySlugAndIdNotAndIsDeleted(slug, id, 0)) {
-                    throw new BusinessException(ErrorCode.CATEGORY_SLUG_EXISTS, "分类 slug 已存在");
+                if (isCategorySlugOccupiedForUpdate(id, slug)) {
+                    throw new BusinessException(ErrorCode.CATEGORY_SLUG_EXISTS, "分类 slug 已存在或已被历史记录占用");
                 }
                 category.setSlug(slug);
             } else if (category.getSlug() == null || category.getSlug().isBlank()) {
@@ -92,6 +96,7 @@ public class CategoryServiceImpl implements CategoryService {
         if (req.containsKey("seo_description")) category.setSeoDescription((String) req.get("seo_description"));
         if (req.containsKey("seo_keywords")) category.setSeoKeywords((String) req.get("seo_keywords"));
         if (req.containsKey("sort_order")) category.setSortOrder(((Number) req.get("sort_order")).intValue());
+        saveCategorySlugHistoryIfChanged(category, oldSlug);
         categoryRepository.save(category);
     }
 
@@ -111,6 +116,9 @@ public class CategoryServiceImpl implements CategoryService {
 
     private ProductCategory findCategoryByIdOrSlug(String idOrSlug) {
         return categoryRepository.findBySlugAndIsDeleted(idOrSlug, 0)
+                .or(() -> categorySlugHistoryRepository.findFirstBySlugOrderByCreatedAtDesc(idOrSlug)
+                        .flatMap(history -> categoryRepository.findById(history.getCategoryId()))
+                        .filter(category -> category.getIsDeleted() == 0))
                 .or(() -> parseUuid(idOrSlug)
                         .flatMap(categoryRepository::findById)
                         .filter(category -> category.getIsDeleted() == 0))
@@ -144,9 +152,33 @@ public class CategoryServiceImpl implements CategoryService {
         }
         String candidate = base;
         int index = 2;
-        while (categoryRepository.existsBySlugAndIsDeleted(candidate, 0)) {
+        while (isCategorySlugOccupied(candidate)) {
             candidate = base + "-" + index++;
         }
         return candidate;
+    }
+
+    private boolean isCategorySlugOccupied(String slug) {
+        return categoryRepository.existsBySlugAndIsDeleted(slug, 0)
+                || categorySlugHistoryRepository.existsBySlug(slug);
+    }
+
+    private boolean isCategorySlugOccupiedForUpdate(UUID categoryId, String slug) {
+        return categoryRepository.existsBySlugAndIdNotAndIsDeleted(slug, categoryId, 0)
+                || categorySlugHistoryRepository.existsBySlug(slug);
+    }
+
+    private void saveCategorySlugHistoryIfChanged(ProductCategory category, String oldSlug) {
+        String currentSlug = category.getSlug();
+        if (oldSlug == null || oldSlug.isBlank() || Objects.equals(oldSlug, currentSlug)) {
+            return;
+        }
+        if (categorySlugHistoryRepository.existsByCategoryIdAndSlug(category.getId(), oldSlug)) {
+            return;
+        }
+        CategorySlugHistory history = new CategorySlugHistory();
+        history.setCategoryId(category.getId());
+        history.setSlug(oldSlug);
+        categorySlugHistoryRepository.save(history);
     }
 }

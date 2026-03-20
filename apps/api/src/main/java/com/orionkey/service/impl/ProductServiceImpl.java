@@ -5,6 +5,7 @@ import com.orionkey.constant.CardKeyStatus;
 import com.orionkey.constant.ErrorCode;
 import com.orionkey.entity.Product;
 import com.orionkey.entity.ProductCategory;
+import com.orionkey.entity.ProductSlugHistory;
 import com.orionkey.entity.ProductSpec;
 import com.orionkey.entity.WholesaleRule;
 import com.orionkey.exception.BusinessException;
@@ -12,6 +13,7 @@ import com.orionkey.repository.CardKeyRepository;
 import com.orionkey.repository.OrderItemRepository;
 import com.orionkey.repository.ProductCategoryRepository;
 import com.orionkey.repository.ProductRepository;
+import com.orionkey.repository.ProductSlugHistoryRepository;
 import com.orionkey.repository.ProductSpecRepository;
 import com.orionkey.repository.WholesaleRuleRepository;
 import com.orionkey.service.ProductService;
@@ -41,6 +43,7 @@ public class ProductServiceImpl implements ProductService {
     private final CardKeyRepository cardKeyRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductCategoryRepository categoryRepository;
+    private final ProductSlugHistoryRepository productSlugHistoryRepository;
 
     @Override
     @Cacheable(cacheNames = CACHE_PRODUCT_LIST, key = "#categoryId + '|' + #keyword + '|' + #page + '|' + #pageSize", condition = "@cacheSwitchState.enabled")
@@ -109,8 +112,8 @@ public class ProductServiceImpl implements ProductService {
                 : null;
         if (slug == null || slug.isEmpty()) {
             slug = generateUniqueProductSlug(title);
-        } else if (productRepository.existsBySlugAndIsDeleted(slug, 0)) {
-            throw new BusinessException(ErrorCode.PRODUCT_SLUG_EXISTS, "商品 slug 已存在");
+        } else if (isProductSlugOccupied(slug)) {
+            throw new BusinessException(ErrorCode.PRODUCT_SLUG_EXISTS, "商品 slug 已存在或已被历史记录占用");
         }
         Product product = new Product();
         product.setTitle(title);
@@ -141,14 +144,15 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(id)
                 .filter(p -> p.getIsDeleted() == 0)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "商品不存在"));
+        String oldSlug = product.getSlug();
         if (req.containsKey("title")) product.setTitle((String) req.get("title"));
         if (req.containsKey("description")) product.setDescription((String) req.get("description"));
         if (req.containsKey("detail_md")) product.setDetailMd((String) req.get("detail_md"));
         if (req.containsKey("slug")) {
             String slug = req.get("slug") == null ? null : ((String) req.get("slug")).trim();
             if (slug != null && !slug.isEmpty()) {
-                if (productRepository.existsBySlugAndIdNotAndIsDeleted(slug, id, 0)) {
-                    throw new BusinessException(ErrorCode.PRODUCT_SLUG_EXISTS, "商品 slug 已存在");
+                if (isProductSlugOccupiedForUpdate(id, slug)) {
+                    throw new BusinessException(ErrorCode.PRODUCT_SLUG_EXISTS, "商品 slug 已存在或已被历史记录占用");
                 }
                 product.setSlug(slug);
             } else if (product.getSlug() == null || product.getSlug().isBlank()) {
@@ -168,6 +172,7 @@ public class ProductServiceImpl implements ProductService {
         if (req.containsKey("is_enabled")) product.setEnabled((boolean) req.get("is_enabled"));
         if (req.containsKey("initial_sales")) product.setInitialSales(((Number) req.get("initial_sales")).intValue());
         if (req.containsKey("sort_order")) product.setSortOrder(((Number) req.get("sort_order")).intValue());
+        saveProductSlugHistoryIfChanged(product, oldSlug);
         productRepository.save(product);
     }
 
@@ -178,14 +183,27 @@ public class ProductServiceImpl implements ProductService {
         }
         String candidate = base;
         int index = 2;
-        while (productRepository.existsBySlugAndIsDeleted(candidate, 0)) {
+        while (isProductSlugOccupied(candidate)) {
             candidate = base + "-" + index++;
         }
         return candidate;
     }
 
+    private boolean isProductSlugOccupied(String slug) {
+        return productRepository.existsBySlugAndIsDeleted(slug, 0)
+                || productSlugHistoryRepository.existsBySlug(slug);
+    }
+
+    private boolean isProductSlugOccupiedForUpdate(UUID productId, String slug) {
+        return productRepository.existsBySlugAndIdNotAndIsDeleted(slug, productId, 0)
+                || productSlugHistoryRepository.existsBySlug(slug);
+    }
+
     private Product findPublicProductByIdOrSlug(String idOrSlug) {
         return productRepository.findBySlugAndIsDeletedAndEnabled(idOrSlug, 0, true)
+                .or(() -> productSlugHistoryRepository.findFirstBySlugOrderByCreatedAtDesc(idOrSlug)
+                        .flatMap(history -> productRepository.findById(history.getProductId()))
+                        .filter(product -> product.getIsDeleted() == 0 && product.isEnabled()))
                 .or(() -> parseUuid(idOrSlug)
                         .flatMap(productRepository::findById)
                         .filter(product -> product.getIsDeleted() == 0 && product.isEnabled()))
@@ -198,6 +216,20 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception ignored) {
             return Optional.empty();
         }
+    }
+
+    private void saveProductSlugHistoryIfChanged(Product product, String oldSlug) {
+        String currentSlug = product.getSlug();
+        if (oldSlug == null || oldSlug.isBlank() || Objects.equals(oldSlug, currentSlug)) {
+            return;
+        }
+        if (productSlugHistoryRepository.existsByProductIdAndSlug(product.getId(), oldSlug)) {
+            return;
+        }
+        ProductSlugHistory history = new ProductSlugHistory();
+        history.setProductId(product.getId());
+        history.setSlug(oldSlug);
+        productSlugHistoryRepository.save(history);
     }
 
 
