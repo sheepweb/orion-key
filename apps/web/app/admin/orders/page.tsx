@@ -31,6 +31,7 @@ export default function AdminOrdersPage() {
   const [refundReason, setRefundReason] = useState("")
 
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [markPaidConfirm, setMarkPaidConfirm] = useState<string | null>(null)
 
   const formatDateTime = (value?: string | null) => value ? new Date(value).toLocaleString() : "-"
   const isWechatOrder = (order?: AdminOrderItem | null) => order?.payment_method === "wechat"
@@ -114,6 +115,8 @@ export default function AdminOrdersPage() {
         () => null
       )
       toast.success("已标记为已支付")
+      setMarkPaidConfirm(null)
+      setShowDetail(null)
       await fetchOrders()
       if (showDetail?.id === orderId) {
         await refreshDetail(orderId)
@@ -364,7 +367,7 @@ export default function AdminOrdersPage() {
                         {order.status === "PENDING" && (
                           <button
                             type="button"
-                            onClick={() => handleMarkPaid(order.id)}
+                            onClick={() => setMarkPaidConfirm(order.id)}
                             className="rounded-md p-1.5 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600 transition-colors"
                             title={t("admin.markPaid")}
                           >
@@ -646,26 +649,52 @@ export default function AdminOrdersPage() {
           </div>
             <div className="shrink-0 border-t border-border bg-card px-6 py-4">
               <div className="flex justify-end gap-3">
-                {showDetail.status === "PENDING" && (
-                  <button
-                    type="button"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-                    onClick={() => handleMarkPaid(showDetail.id)}
-                  >
-                    {t("admin.markPaid")}
-                  </button>
-                )}
                 <button
                   type="button"
-                  className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
                   onClick={() => setShowDetail(null)}
                 >
                   {t("common.close")}
                 </button>
+                {showDetail.status === "PENDING" && (
+                  <button
+                    type="button"
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    onClick={() => setMarkPaidConfirm(showDetail.id)}
+                  >
+                    {t("admin.markPaid")}
+                  </button>
+                )}
               </div>
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Mark Paid Confirmation */}
+      <Modal open={markPaidConfirm !== null} onClose={() => setMarkPaidConfirm(null)} className="max-w-sm">
+        <div className="flex flex-col items-center gap-4 p-6 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+            <CheckCircle className="h-6 w-6 text-emerald-600" />
+          </div>
+          <h3 className="text-base font-semibold text-foreground">{t("admin.markPaidConfirm")}</h3>
+          <div className="flex w-full gap-3">
+            <button
+              type="button"
+              className="flex-1 rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+              onClick={() => setMarkPaidConfirm(null)}
+            >
+              {t("admin.cancel")}
+            </button>
+            <button
+              type="button"
+              className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              onClick={() => markPaidConfirm && handleMarkPaid(markPaidConfirm)}
+            >
+              {t("admin.markPaidBtn")}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
