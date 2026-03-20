@@ -19,6 +19,8 @@ function resolveSiteName(siteConfig?: Partial<SiteConfig> | null, siteName?: str
 }
 
 function resolveContentLabel(path: string) {
+  if (path === "/feed") return "内容中心"
+  if (path === "/help/faq") return "常见问题"
   if (path.startsWith("/blog")) return "博客公告"
   if (path.startsWith("/topics")) return "专题内容"
   if (path.startsWith("/help")) return "帮助中心"
@@ -27,6 +29,7 @@ function resolveContentLabel(path: string) {
 }
 
 function resolveContentVariant(path: string) {
+  if (path === "/feed") return "default"
   if (path.startsWith("/blog")) return "blog"
   if (path.startsWith("/topics")) return "topics"
   if (path.startsWith("/help")) return "help"
@@ -35,6 +38,8 @@ function resolveContentVariant(path: string) {
 }
 
 function resolveContentSubtitle(path: string) {
+  if (path === "/feed") return "内容中心 · 最近更新 · RSS 订阅入口"
+  if (path === "/help/faq") return "常见问题 · 高频问题 · 快速排查"
   if (path.startsWith("/blog")) return "博客公告 · 更新说明 · 选购建议"
   if (path.startsWith("/topics")) return "专题内容 · 购买指南 · 售后建议"
   if (path.startsWith("/help")) return "帮助中心 · FAQ · 支付与发货说明"
@@ -43,6 +48,8 @@ function resolveContentSubtitle(path: string) {
 }
 
 function resolveContentEyebrow(path: string) {
+  if (path === "/feed") return "FEED"
+  if (path === "/help/faq") return "FAQ"
   if (path.startsWith("/blog")) return "BLOG"
   if (path.startsWith("/topics")) return "TOPICS"
   if (path.startsWith("/help")) return "HELP"
@@ -51,6 +58,8 @@ function resolveContentEyebrow(path: string) {
 }
 
 function resolveContentMeta(path: string) {
+  if (path === "/feed") return "内容中心 / 最近更新 / RSS"
+  if (path === "/help/faq") return "FAQ / 高频问题 / 快速定位"
   if (path.startsWith("/blog")) return "公告 / 上新 / 内容更新"
   if (path.startsWith("/topics")) return "购买指南 / 教程 / 售后说明"
   if (path.startsWith("/help")) return "FAQ / 支付 / 发货 / 售后"
@@ -59,6 +68,8 @@ function resolveContentMeta(path: string) {
 }
 
 function resolveContentTag(path: string) {
+  if (path === "/feed") return "内容中心"
+  if (path === "/help/faq") return "FAQ"
   if (path.startsWith("/blog")) return "博客公告"
   if (path.startsWith("/topics")) return "专题内容"
   if (path.startsWith("/help")) return "帮助中心"

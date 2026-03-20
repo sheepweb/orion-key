@@ -30,6 +30,18 @@ export default async function FeedPage() {
     { label: "博客文章", value: blogs.length, href: "/blog" },
     { label: "帮助入口", value: 4, href: "/help" },
   ]
+  const actionPaths = [
+    { href: "/help/buying-guide", label: "我想先下单", description: "从购买流程、资料准备与下单前注意事项开始看" },
+    { href: "/help/payment", label: "支付遇到问题", description: "优先排查支付到账、页面未刷新与支付异常场景" },
+    { href: "/help/delivery", label: "发货后没收到", description: "查看自动发货时效、订单状态与未收到货的处理建议" },
+    { href: "/blog", label: "我想看最新更新", description: "直接看博客公告、上新说明与最近内容更新" },
+  ]
+  const readingRoutes = [
+    { href: "/help/buying-guide", label: "路径 1：先看购买指南", description: "适合首次购买，快速了解下单前要准备什么" },
+    { href: "/topics", label: "路径 2：继续看专题内容", description: "系统浏览选购、发货、售后等长内容说明" },
+    { href: "/help/faq", label: "路径 3：最后查 FAQ", description: "遇到具体问题时，再回到 FAQ 快速检索常见答案" },
+    { href: "/topics/rss.xml", label: "路径 4：订阅专题 RSS", description: "想长期跟踪内容更新，可直接订阅 RSS" },
+  ]
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -50,6 +62,19 @@ export default async function FeedPage() {
         ))}
       </div>
 
+      <SeoLinkSection title="如果你现在要……" items={actionPaths} />
+      <SeoLinkSection title="推荐阅读路径" items={readingRoutes} />
+
+      <SeoLinkSection
+        title="从哪里开始看"
+        items={[
+          { href: "/help/buying-guide", label: "购买前先看什么", description: "先看购买流程、资料填写要求与下单前注意事项" },
+          { href: "/help/payment", label: "支付遇到问题怎么办", description: "查看支付到账、页面未刷新与支付异常处理建议" },
+          { href: "/help/delivery", label: "发货后如何确认结果", description: "了解自动发货时效、未收到货与订单状态说明" },
+          { href: "/help/refund", label: "售后问题如何处理", description: "查看退款边界、售后范围与提交问题时的建议" },
+        ]}
+      />
+
       <SeoLinkSection
         title="新手入门"
         items={[
@@ -69,6 +94,16 @@ export default async function FeedPage() {
         ]}
       />
 
+      <SeoLinkSection
+        title="内容跳转导航"
+        items={[
+          { href: "/blog", label: "先看博客公告", description: "适合查看站点更新、上新说明与最新公告" },
+          { href: "/topics", label: "继续看专题内容", description: "适合系统浏览购买指南、教程与售后说明" },
+          { href: "/help", label: "直接去帮助中心", description: "适合按问题类型快速进入 FAQ、支付、发货与售后说明" },
+          { href: "/topics/rss.xml", label: "订阅专题 RSS", description: "想持续追踪长内容更新，可直接订阅专题 RSS" },
+        ]}
+      />
+
       {latestUpdates.length > 0 ? (
         <section className="space-y-3">
           <div className="space-y-1">
@@ -76,9 +111,19 @@ export default async function FeedPage() {
             <p className="text-sm text-muted-foreground">自动汇总 blog 与 topics 的最新内容，方便快速追踪站点更新。</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {latestUpdates.map((item) => (
+            {latestUpdates.map((item, index) => (
               <Link key={`${item.type}-${item.slug}`} href={item.href} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40">
-                <div className="space-y-2"><p className="text-xs font-medium text-primary">{item.type}</p><h3 className="text-base font-semibold text-foreground">{item.title}</h3><p className="text-sm leading-6 text-muted-foreground">{item.description}</p></div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-primary">{item.type}</p>
+                    <p className="text-xs text-muted-foreground">最近更新 #{index + 1}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-base font-semibold text-foreground">{item.title}</h3>
+                    <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">适合想快速了解最新公告、购买建议或专题更新时进入查看。</p>
+                </div>
               </Link>
             ))}
           </div>
@@ -87,15 +132,35 @@ export default async function FeedPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 space-y-1"><h2 className="text-lg font-semibold text-foreground">最新博客</h2><p className="text-sm text-muted-foreground">查看公告、上新说明与购买建议。</p></div>
+          <div className="mb-4 space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">最新博客</h2>
+            <p className="text-sm text-muted-foreground">查看公告、上新说明与购买建议。</p>
+          </div>
           <div className="space-y-3">
-            {latestBlogs.map((item) => <Link key={item.slug} href={`/blog/${item.slug}`} className="block rounded-xl border border-border/60 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{item.title}</Link>)}
+            {latestBlogs.map((item) => (
+              <Link key={item.slug} href={`/blog/${item.slug}`} className="block rounded-xl border border-border/60 px-4 py-3 transition-colors hover:border-primary/40 hover:text-foreground">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-foreground">{item.title}</h3>
+                  <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 space-y-1"><h2 className="text-lg font-semibold text-foreground">最新专题</h2><p className="text-sm text-muted-foreground">继续浏览购买指南、教程与售后专题。</p></div>
+          <div className="mb-4 space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">最新专题</h2>
+            <p className="text-sm text-muted-foreground">继续浏览购买指南、教程与售后专题。</p>
+          </div>
           <div className="space-y-3">
-            {latestTopics.map((item) => <Link key={item.slug} href={`/topics/${item.slug}`} className="block rounded-xl border border-border/60 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">{item.title}</Link>)}
+            {latestTopics.map((item) => (
+              <Link key={item.slug} href={`/topics/${item.slug}`} className="block rounded-xl border border-border/60 px-4 py-3 transition-colors hover:border-primary/40 hover:text-foreground">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-foreground">{item.title}</h3>
+                  <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </div>

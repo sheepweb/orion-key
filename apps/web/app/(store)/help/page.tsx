@@ -23,12 +23,24 @@ export default function HelpCenterPage() {
     { href: "/topics", label: "购买与售后专题", description: "查看更多专题型内容页与长尾指南" },
     { href: "/blog", label: "博客公告", description: "查看公告、上新说明与购买建议" },
   ]
+  const scenarioLinks = [
+    { href: "/help/buying-guide", label: "购买前要看什么", description: "先了解下单流程、资料准备与常见限制" },
+    { href: "/help/payment", label: "支付遇到问题", description: "查看支付到账、支付异常与页面未刷新的处理建议" },
+    { href: "/help/delivery", label: "发货后怎么确认", description: "了解自动发货时效、未收到货与订单状态说明" },
+    { href: "/help/refund", label: "售后与退款问题", description: "查看售后边界、退款原则与联系客服前的准备事项" },
+  ]
   const groups = [
     { title: "购买前必读", items: helpArticles.filter((article) => ["buying-guide", "account-guide", "usage-notes"].includes(article.slug)) },
     { title: "支付与发货", items: helpArticles.filter((article) => ["payment", "delivery", "order-query-guide"].includes(article.slug)) },
     { title: "售后与风控", items: helpArticles.filter((article) => ["refund", "risk-review", "contact-support"].includes(article.slug)) },
   ]
   const featuredItems = helpArticles.filter((article) => ["faq", "buying-guide", "payment", "refund"].includes(article.slug))
+  const recommendedPath = [
+    { href: "/help/buying-guide", label: "先看购买指南", description: "适合第一次下单，先了解购买流程与注意事项" },
+    { href: "/help/payment", label: "再看支付说明", description: "了解支付到账、异常场景与排查方式" },
+    { href: "/help/delivery", label: "然后看发货说明", description: "确认自动发货时效、订单状态与收货结果" },
+    { href: "/help/contact-support", label: "最后看联系客服说明", description: "如果仍未解决，可按要求准备订单号与问题截图" },
+  ]
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -39,6 +51,7 @@ export default function HelpCenterPage() {
       </div>
 
       <SeoLinkSection title="帮助中心快捷入口" items={quickLinks} />
+      <SeoLinkSection title="按问题类型进入" items={scenarioLinks} />
 
       <section className="space-y-3">
         <div className="space-y-1">
@@ -51,6 +64,24 @@ export default function HelpCenterPage() {
               <div className="space-y-2">
                 <h3 className="text-base font-semibold text-foreground">{article.title}</h3>
                 <p className="text-sm leading-6 text-muted-foreground">{article.description}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-foreground">推荐阅读路径</h2>
+          <p className="text-sm text-muted-foreground">如果你是第一次购买，可以按这个顺序依次查看，快速建立完整认知。</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {recommendedPath.map((item, index) => (
+            <Link key={item.href} href={item.href} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-primary">步骤 {index + 1}</p>
+                <h3 className="text-base font-semibold text-foreground">{item.label}</h3>
+                <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
               </div>
             </Link>
           ))}

@@ -11,11 +11,12 @@ type HelpPageLayoutProps = {
   tocItems?: TocItem[]
   groupItems?: LinkItem[]
   relatedItems?: LinkItem[]
+  nextSteps?: LinkItem[]
   prevItem?: LinkItem | null
   nextItem?: LinkItem | null
 }
 
-export function HelpPageLayout({ article, tocItems = [], groupItems = [], relatedItems = [], prevItem, nextItem }: HelpPageLayoutProps) {
+export function HelpPageLayout({ article, tocItems = [], groupItems = [], relatedItems = [], nextSteps = [], prevItem, nextItem }: HelpPageLayoutProps) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <div className="space-y-3">
@@ -27,6 +28,21 @@ export function HelpPageLayout({ article, tocItems = [], groupItems = [], relate
           <p className="text-sm text-muted-foreground">帮助中心</p>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{article.title}</h1>
           <p className="text-base text-muted-foreground">{article.description}</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">本页适合谁看</h2>
+            <p className="text-sm leading-6 text-muted-foreground">适合正在处理 {article.title}、需要快速定位支付、发货、售后或使用说明的用户阅读。</p>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">你将获得什么</h2>
+            <p className="text-sm leading-6 text-muted-foreground">本页会按步骤整理关键说明、常见异常与下一步建议，帮助你更快完成排查或继续操作。</p>
+          </div>
         </div>
       </div>
 
@@ -48,8 +64,11 @@ export function HelpPageLayout({ article, tocItems = [], groupItems = [], relate
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="space-y-8">
           {article.sections.map((section, index) => (
-            <section key={section.title} id={tocItems[index]?.id} className="scroll-mt-24 space-y-3">
-              <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
+            <section key={section.title} id={tocItems[index]?.id} className="scroll-mt-24 space-y-3 border-b border-border/50 pb-6 last:border-b-0 last:pb-0">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Section {index + 1}</p>
+                <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
+              </div>
               <div className="space-y-3 text-sm leading-7 text-muted-foreground sm:text-base">
                 {section.paragraphs.map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
@@ -59,6 +78,8 @@ export function HelpPageLayout({ article, tocItems = [], groupItems = [], relate
           ))}
         </div>
       </div>
+
+      {nextSteps.length > 0 ? <SeoLinkSection title="下一步建议" items={nextSteps} /> : null}
 
       {prevItem || nextItem ? (
         <div className="grid gap-4 md:grid-cols-2">
