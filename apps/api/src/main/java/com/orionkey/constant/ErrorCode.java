@@ -27,7 +27,9 @@ public final class ErrorCode {
     public static final int INSUFFICIENT_STOCK = 30002;
     public static final int SPEC_NOT_FOUND = 30003;
     public static final int PURCHASE_LIMIT_EXCEEDED = 30004;
-    public static final int PRODUCT_SLUG_EXISTS = 30005;
+    public static final int SPEC_HAS_CARD_KEYS = 30005;
+    public static final int SPEC_NAME_DUPLICATE = 30006;
+    public static final int PRODUCT_SLUG_EXISTS = 30007;
 
     // ── Order 40001~40099 ──
     public static final int ORDER_NOT_FOUND = 40001;

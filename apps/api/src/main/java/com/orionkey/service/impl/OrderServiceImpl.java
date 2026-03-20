@@ -75,6 +75,9 @@ public class OrderServiceImpl implements OrderService {
                 .filter(p -> p.getIsDeleted() == 0 && p.isEnabled())
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "商品不存在或已下架"));
 
+        // F18: 规格模式安全校验 — 防止通过伪造 spec_id 访问非当前模式的库存池或获取不同价格
+        validateSpecConsistency(product, specId);
+
         // Stock check (advisory)
         long available = specId != null
                 ? cardKeyRepository.countByProductIdAndSpecIdAndStatus(productId, specId, CardKeyStatus.AVAILABLE)
@@ -182,6 +185,9 @@ public class OrderServiceImpl implements OrderService {
             Product product = productRepository.findById(ci.getProductId())
                     .filter(p -> p.getIsDeleted() == 0 && p.isEnabled())
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "商品不存在或已下架"));
+
+            // F18: 规格模式安全校验
+            validateSpecConsistency(product, ci.getSpecId());
 
             // Advisory stock check (same pattern as createDirectOrder)
             long available = ci.getSpecId() != null
@@ -374,5 +380,24 @@ public class OrderServiceImpl implements OrderService {
             return im;
         }).toList());
         return map;
+    }
+    private void validateSpecConsistency(Product product, UUID specId) {
+        if (product.isSpecEnabled()) {
+            List<ProductSpec> activeSpecs = productSpecRepository
+                    .findByProductIdAndIsDeletedOrderBySortOrderAsc(product.getId(), 0);
+            if (!activeSpecs.isEmpty() && specId == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "该商品需要选择规格");
+            }
+        } else if (specId != null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "该商品不支持规格选择");
+        }
+    }
+
+    private int getConfigInt(String key, int defaultValue) {
+        return siteConfigRepository.findByConfigKey(key)
+                .map(c -> {
+                    try { return Integer.parseInt(c.getConfigValue()); }
+                    catch (Exception e) { return defaultValue; }
+                }).orElse(defaultValue);
     }
 }

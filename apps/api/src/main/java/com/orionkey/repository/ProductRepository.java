@@ -4,6 +4,7 @@ import com.orionkey.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -54,4 +55,11 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Query("SELECT p FROM Product p WHERE p.isDeleted = 0 AND (p.slug IS NULL OR p.slug = '') ORDER BY p.createdAt ASC")
     java.util.List<Product> findAllWithoutSlug();
+
+    // 一次性迁移：将已有规格的商品自动设置 spec_enabled=true
+    @Modifying
+    @Query("UPDATE Product p SET p.specEnabled = true WHERE p.specEnabled = false " +
+            "AND p.isDeleted = 0 AND EXISTS (" +
+            "SELECT 1 FROM ProductSpec s WHERE s.productId = p.id AND s.isDeleted = 0)")
+    int migrateSpecEnabled();
 }
