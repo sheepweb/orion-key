@@ -51,4 +51,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     boolean existsBySlugAndIdNotAndIsDeleted(String slug, UUID id, int isDeleted);
 
     Optional<Product> findBySlugAndIsDeletedAndEnabled(String slug, int isDeleted, boolean enabled);
+
+    @Query("SELECT p FROM Product p WHERE p.isDeleted = 0 AND (p.slug IS NULL OR p.slug = '') ORDER BY p.createdAt ASC")
+    java.util.List<Product> findAllWithoutSlug();
 }
