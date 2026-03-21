@@ -434,6 +434,11 @@ export interface AdminOrderItem extends OrderDetail {
   user_id: string | null
   username: string | null
   is_risk_flagged: boolean
+  wx_out_trade_no?: string | null
+  wx_refund_no?: string | null
+  refund_amount?: number | null
+  refunded_at?: string | null
+  transaction_id?: string | null
 }
 
 // ============================================================

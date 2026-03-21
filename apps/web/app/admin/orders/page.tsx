@@ -26,8 +26,14 @@ export default function AdminOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showDetail, setShowDetail] = useState<AdminOrderItem | null>(null)
   const [detailCardKeys, setDetailCardKeys] = useState<OrderCardKey[]>([])
+  const [wxpayActionLoading, setWxpayActionLoading] = useState(false)
+  const [refundAmount, setRefundAmount] = useState("")
+  const [refundReason, setRefundReason] = useState("")
 
   const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  const formatDateTime = (value?: string | null) => value ? new Date(value).toLocaleString() : "-"
+  const isWechatOrder = (order?: AdminOrderItem | null) => order?.payment_method === "wechat"
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -72,12 +78,24 @@ export default function AdminOrdersPage() {
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE)
 
+  const refreshDetail = async (orderId: string) => {
+    const detail = await withMockFallback(
+      () => adminOrderApi.getDetail(orderId),
+      () => Promise.resolve(orders.find(item => item.id === orderId) ?? showDetail as AdminOrderItem)
+    )
+    setShowDetail(detail)
+    return detail
+  }
+
   const handleViewDetail = async (order: AdminOrderItem) => {
-    setShowDetail(order)
-    if (order.status === "DELIVERED") {
+    const detail = await refreshDetail(order.id).catch(() => order)
+    setShowDetail(detail)
+    setRefundAmount(detail.actual_amount?.toFixed(2) ?? "")
+    setRefundReason("")
+    if (detail.status === "DELIVERED") {
       try {
         const keys = await withMockFallback(
-          () => adminCardKeyApi.getByOrder(order.id),
+          () => adminCardKeyApi.getByOrder(detail.id),
           () => [...mockOrderCardKeys]
         )
         setDetailCardKeys(keys)
@@ -96,10 +114,77 @@ export default function AdminOrdersPage() {
         () => null
       )
       toast.success("已标记为已支付")
-      setShowDetail(null)
       await fetchOrders()
+      if (showDetail?.id === orderId) {
+        await refreshDetail(orderId)
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "操作失败")
+    }
+  }
+
+  const handleWxpayQuery = async (orderId: string) => {
+    try {
+      setWxpayActionLoading(true)
+      const result = await adminOrderApi.queryWxpayOrder(orderId)
+      toast.success(`查单成功：${String(result.trade_state ?? result.status ?? "已同步")}`)
+      await fetchOrders()
+      await refreshDetail(orderId)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "微信查单失败")
+    } finally {
+      setWxpayActionLoading(false)
+    }
+  }
+
+  const handleWxpayClose = async (orderId: string) => {
+    try {
+      setWxpayActionLoading(true)
+      await adminOrderApi.closeWxpayOrder(orderId)
+      toast.success("微信订单已关闭")
+      await fetchOrders()
+      await refreshDetail(orderId)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "关闭微信订单失败")
+    } finally {
+      setWxpayActionLoading(false)
+    }
+  }
+
+  const handleWxpayRefund = async (orderId: string) => {
+    const parsedAmount = Number(refundAmount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error("请输入正确的退款金额")
+      return
+    }
+
+    try {
+      setWxpayActionLoading(true)
+      const result = await adminOrderApi.refundWxpayOrder(orderId, {
+        refund_amount: parsedAmount,
+        reason: refundReason || undefined,
+      })
+      toast.success(`退款请求已提交：${String(result.status ?? "PROCESSING")}`)
+      await fetchOrders()
+      await refreshDetail(orderId)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "发起退款失败")
+    } finally {
+      setWxpayActionLoading(false)
+    }
+  }
+
+  const handleWxpayRefundQuery = async (orderId: string) => {
+    try {
+      setWxpayActionLoading(true)
+      const result = await adminOrderApi.queryWxpayRefund(orderId)
+      toast.success(`退款状态：${String(result.status ?? "已查询")}`)
+      await fetchOrders()
+      await refreshDetail(orderId)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "查询退款状态失败")
+    } finally {
+      setWxpayActionLoading(false)
     }
   }
 
@@ -389,9 +474,112 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">支付时间</span>
-                  <span className="text-sm text-foreground">{showDetail.paid_at ? new Date(showDetail.paid_at).toLocaleString() : "-"}</span>
+                  <span className="text-sm text-foreground">{formatDateTime(showDetail.paid_at)}</span>
+                </div>
+                <div className="col-span-2 flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">微信商户订单号</span>
+                  <span className="break-all font-mono text-xs text-foreground">{showDetail.wx_out_trade_no || "-"}</span>
+                </div>
+                <div className="col-span-2 flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">微信交易号</span>
+                  <span className="break-all font-mono text-xs text-foreground">{showDetail.transaction_id || "-"}</span>
+                </div>
+                <div className="col-span-2 flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">微信退款单号</span>
+                  <span className="break-all font-mono text-xs text-foreground">{showDetail.wx_refund_no || "-"}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">退款金额</span>
+                  <span className="text-sm text-foreground">
+                    {showDetail.refund_amount != null ? `¥${Number(showDetail.refund_amount).toFixed(2)}` : "-"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">退款时间</span>
+                  <span className="text-sm text-foreground">{formatDateTime(showDetail.refunded_at)}</span>
                 </div>
               </div>
+
+              {isWechatOrder(showDetail) && (
+                <div className="rounded-lg border border-border bg-muted/20 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">微信支付操作</p>
+                      <p className="text-xs text-muted-foreground">支持查单、关单、退款和退款状态查询</p>
+                    </div>
+                    {wxpayActionLoading && <span className="text-xs text-muted-foreground">处理中...</span>}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => handleWxpayQuery(showDetail.id)}
+                      disabled={wxpayActionLoading}
+                    >
+                      微信查单
+                    </button>
+
+                    {showDetail.status === "PENDING" && (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-500/20 transition-colors disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
+                        onClick={() => handleWxpayClose(showDetail.id)}
+                        disabled={wxpayActionLoading}
+                      >
+                        关闭微信订单
+                      </button>
+                    )}
+
+                    {showDetail.wx_refund_no && (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2"
+                        onClick={() => handleWxpayRefundQuery(showDetail.id)}
+                        disabled={wxpayActionLoading}
+                      >
+                        查询退款状态
+                      </button>
+                    )}
+                  </div>
+
+                  {(showDetail.status === "PAID" || showDetail.status === "DELIVERED") && !showDetail.refunded_at && (
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">退款金额</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)}
+                          disabled={wxpayActionLoading}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">退款原因</label>
+                        <input
+                          type="text"
+                          className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          value={refundReason}
+                          onChange={(e) => setRefundReason(e.target.value)}
+                          placeholder="可选，建议填写"
+                          disabled={wxpayActionLoading}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2"
+                        onClick={() => handleWxpayRefund(showDetail.id)}
+                        disabled={wxpayActionLoading}
+                      >
+                        发起退款
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* 已发卡密 */}
               {showDetail.status === "DELIVERED" && detailCardKeys.length > 0 && (

@@ -493,6 +493,17 @@ export const adminOrderApi = {
     request<AdminOrderItem>(`/admin/orders/${id}`),
   markPaid: (id: string) =>
     request<null>(`/admin/orders/${id}/mark-paid`, { method: "POST" }),
+  queryWxpayOrder: (id: string) =>
+    request<Record<string, unknown>>(`/admin/orders/${id}/wxpay/query`, { method: "POST" }),
+  closeWxpayOrder: (id: string) =>
+    request<null>(`/admin/orders/${id}/wxpay/close`, { method: "POST" }),
+  refundWxpayOrder: (id: string, data: { refund_amount?: number; reason?: string }) =>
+    request<Record<string, unknown>>(`/admin/orders/${id}/wxpay/refund`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  queryWxpayRefund: (id: string) =>
+    request<Record<string, unknown>>(`/admin/orders/${id}/wxpay/refund-status`),
 }
 
 // ============================================================
