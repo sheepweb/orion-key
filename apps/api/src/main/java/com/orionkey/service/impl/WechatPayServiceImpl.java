@@ -47,7 +47,19 @@ public class WechatPayServiceImpl implements WechatPayService {
                 .signType(resolveHeader(headers, "Wechatpay-Signature-Type"))
                 .body(body)
                 .build();
-        return parser.parse(requestParam, Transaction.class);
+        try {
+            return parser.parse(requestParam, Transaction.class);
+        } catch (Exception e) {
+            log.error("Wxpay parseTransaction failed: mchid={}, appid={}, serialNo={}, publicKeyId={}, bodyLength={}, headersPresent={}",
+                    config.mchid(),
+                    config.appid(),
+                    config.serialNo(),
+                    config.publicKeyId(),
+                    body == null ? 0 : body.length(),
+                    summarizeHeaders(headers),
+                    e);
+            throw e;
+        }
     }
 
     private RSAPublicKeyConfig buildConfig(WxpayConfig config) {
@@ -80,6 +92,30 @@ public class WechatPayServiceImpl implements WechatPayService {
         }
         log.warn("Missing WeChat Pay header: {}", name);
         return null;
+    }
+
+    private String summarizeHeaders(Map<String, String> headers) {
+        return String.format("serial=%s,nonce=%s,signature=%s,timestamp=%s,signType=%s",
+                hasHeader(headers, "Wechatpay-Serial"),
+                hasHeader(headers, "Wechatpay-Nonce"),
+                hasHeader(headers, "Wechatpay-Signature"),
+                hasHeader(headers, "Wechatpay-Timestamp"),
+                hasHeader(headers, "Wechatpay-Signature-Type"));
+    }
+
+    private boolean hasHeader(Map<String, String> headers, String name) {
+        if (headers == null || headers.isEmpty()) {
+            return false;
+        }
+        if (headers.get(name) != null) {
+            return true;
+        }
+        for (var entry : headers.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name) && entry.getValue() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

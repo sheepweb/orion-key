@@ -413,8 +413,10 @@ public class WebhookServiceImpl implements WebhookService {
 
         UUID orderId;
         try {
-            orderId = UUID.fromString(transaction.getOutTradeNo());
+            orderId = parseWxpayOrderId(transaction.getOutTradeNo());
         } catch (IllegalArgumentException e) {
+            log.error("Wxpay callback invalid out_trade_no: value={}, length={}",
+                    transaction.getOutTradeNo(), safeLength(transaction.getOutTradeNo()), e);
             saveWebhookEvent(eventId, "wxpay", null, body, "INVALID_ORDER_ID");
             return "FAIL";
         }
@@ -582,6 +584,27 @@ public class WebhookServiceImpl implements WebhookService {
         event.setPayload(payload);
         event.setProcessResult(processResult);
         webhookEventRepository.save(event);
+    }
+
+    private UUID parseWxpayOrderId(String outTradeNo) {
+        if (outTradeNo == null || outTradeNo.isBlank()) {
+            throw new IllegalArgumentException("out_trade_no is blank");
+        }
+        try {
+            return UUID.fromString(outTradeNo);
+        } catch (IllegalArgumentException ex) {
+            if (!outTradeNo.matches("[0-9a-fA-F]{32}")) {
+                throw ex;
+            }
+            String normalized = outTradeNo.replaceFirst(
+                    "([0-9a-fA-F]{8})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{12})",
+                    "$1-$2-$3-$4-$5");
+            return UUID.fromString(normalized);
+        }
+    }
+
+    private int safeLength(String value) {
+        return value == null ? 0 : value.length();
     }
 
     /**
