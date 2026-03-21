@@ -89,6 +89,9 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal unitPrice = getUnitPrice(product, specId, quantity);
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "订单金额异常，请联系客服");
+        }
         int expireMinutes = siteConfigService.getConfigInt("order_expire_minutes", 15);
 
         Order order = new Order();
@@ -394,10 +397,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private int getConfigInt(String key, int defaultValue) {
-        return siteConfigRepository.findByConfigKey(key)
-                .map(c -> {
-                    try { return Integer.parseInt(c.getConfigValue()); }
-                    catch (Exception e) { return defaultValue; }
-                }).orElse(defaultValue);
+        return siteConfigService.getConfigInt(key, defaultValue);
     }
 }

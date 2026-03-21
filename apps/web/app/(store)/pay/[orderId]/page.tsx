@@ -20,7 +20,8 @@ import {
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { useLocale, useCart, useSiteConfig } from "@/lib/context"
-import { orderApi, withMockFallback } from "@/services/api"
+import { orderApi, withMockFallback, setTurnstileHeaders } from "@/services/api"
+import { Turnstile, useTurnstile } from "@/components/shared/turnstile"
 import type { OrderStatus } from "@/types"
 import { cn, detectPaymentDevice, isMobileDevice } from "@/lib/utils"
 import { PaymentIcon, getPaymentLabel, getPaymentBrandColor, getPaymentScanHint } from "@/components/shared/payment-icon"
@@ -52,6 +53,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
   const [qiupayPrompt, setQiupayPrompt] = useState<string | null>(null)
   const [qiupayAmount, setQiupayAmount] = useState("")
   const [pendingPayUrl, setPendingPayUrl] = useState<string | null>(null)
+  const { turnstileToken, setTurnstileToken, handleTurnstileReset } = useTurnstile()
 
   const isMobile = isMobileDevice()
 
@@ -225,6 +227,7 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     if (retrying) return
     setRetrying(true)
     try {
+      setTurnstileHeaders(turnstileToken)
       const device = detectPaymentDevice()
       const result = await orderApi.repay(orderId, device)
       // 更新支付链接
@@ -250,10 +253,11 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("common.error")
       toast.error(msg)
+      handleTurnstileReset()
     } finally {
       setRetrying(false)
     }
-  }, [retrying, orderId, isMobile, isWechatMobile, paymentMethod, actualAmount, totalAmount, t])
+  }, [retrying, orderId, isMobile, isWechatMobile, paymentMethod, actualAmount, totalAmount, t, turnstileToken, handleTurnstileReset])
 
   const copyToClipboard = useCallback((text: string) => {
     if (navigator.clipboard?.writeText) {
@@ -376,13 +380,13 @@ export default function PaymentPage({ params }: { params: Promise<{ orderId: str
               )}
               <div className="flex items-start gap-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-amber-700 dark:bg-background/10 dark:text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>
-                  {t("payment.amountExactHint")}
-                </span>
+                <span>{t("payment.amountExactHint")}</span>
               </div>
             </div>
           </>
         )}
+
+        <Turnstile onSuccess={setTurnstileToken} onError={handleTurnstileReset} className="mb-2" />
 
         {isUsdtPayment ? (
           /* ========== USDT 支付视图（紧凑居中布局） ========== */
