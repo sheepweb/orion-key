@@ -12,12 +12,14 @@ import com.orionkey.repository.OrderItemRepository;
 import com.orionkey.repository.OrderRepository;
 import com.orionkey.repository.UserRepository;
 import com.orionkey.service.AdminOrderService;
+import com.orionkey.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -28,6 +30,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final UserRepository userRepository;
+    private final PaymentService paymentService;
 
     @Override
     public PageResult<?> listOrders(String status, String orderType, String paymentMethod,
@@ -72,6 +75,26 @@ public class AdminOrderServiceImpl implements AdminOrderService {
         orderRepository.save(order);
     }
 
+    @Override
+    public Map<String, Object> queryWxpayOrder(UUID id) {
+        return paymentService.queryWxpayOrder(id);
+    }
+
+    @Override
+    public void closeWxpayOrder(UUID id) {
+        paymentService.closeWxpayOrder(id);
+    }
+
+    @Override
+    public Map<String, Object> refundWxpayOrder(UUID id, BigDecimal refundAmount, String reason) {
+        return paymentService.refundWxpayOrder(id, refundAmount, reason);
+    }
+
+    @Override
+    public Map<String, Object> queryWxpayRefund(UUID id) {
+        return paymentService.queryWxpayRefund(id);
+    }
+
     private Map<String, Object> toAdminOrder(Order o) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", o.getId());
@@ -87,6 +110,11 @@ public class AdminOrderServiceImpl implements AdminOrderService {
         map.put("expires_at", o.getExpiresAt());
         map.put("paid_at", o.getPaidAt());
         map.put("delivered_at", o.getDeliveredAt());
+        map.put("wx_out_trade_no", o.getWxOutTradeNo());
+        map.put("wx_refund_no", o.getWxRefundNo());
+        map.put("refund_amount", o.getRefundAmount());
+        map.put("refunded_at", o.getRefundedAt());
+        map.put("transaction_id", o.getEpayTradeNo());
         map.put("user_id", o.getUserId());
         map.put("is_risk_flagged", o.isRiskFlagged());
 

@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 @Service
@@ -44,6 +46,7 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
         }
         if (req.containsKey("is_enabled")) channel.setEnabled((boolean) req.get("is_enabled"));
         if (req.containsKey("sort_order")) channel.setSortOrder(((Number) req.get("sort_order")).intValue());
+        validateChannelForSave(channel);
         paymentChannelRepository.save(channel);
     }
 
@@ -59,6 +62,7 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
         }
         if (req.containsKey("is_enabled")) channel.setEnabled((boolean) req.get("is_enabled"));
         if (req.containsKey("sort_order")) channel.setSortOrder(((Number) req.get("sort_order")).intValue());
+        validateChannelForSave(channel);
         paymentChannelRepository.save(channel);
     }
 
@@ -83,6 +87,68 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
             throw new BusinessException(ErrorCode.BAD_REQUEST, "支付渠道编码不能为空");
         }
         return channelCode.trim();
+    }
+
+    private void validateChannelForSave(PaymentChannel channel) {
+        if (!"native_wxpay".equals(channel.getProviderType())) {
+            return;
+        }
+
+        Map<String, Object> configData = deserializeConfigData(channel.getConfigData());
+        if (configData == null) {
+            throw new BusinessException(ErrorCode.PAYMENT_CONFIG_INCOMPLETE, "微信支付配置不能为空");
+        }
+
+        String appid = requireConfigValue(configData, "appid");
+        String mchid = requireConfigValue(configData, "mchid");
+        String apiV3Key = requireConfigValue(configData, "api_v3_key");
+        String serialNo = requireConfigValue(configData, "serial_no");
+        String publicKeyId = requireConfigValue(configData, "public_key_id");
+        String privateKeyPath = requireConfigValue(configData, "private_key_path");
+        String publicKeyPath = requireConfigValue(configData, "public_key_path");
+        String notifyUrl = requireConfigValue(configData, "notify_url");
+
+        if (apiV3Key.length() != 32) {
+            throw new BusinessException(ErrorCode.PAYMENT_CONFIG_INCOMPLETE, "api_v3_key 必须为 32 位字符串");
+        }
+        if (!notifyUrl.startsWith("https://")) {
+            throw new BusinessException(ErrorCode.PAYMENT_CONFIG_INCOMPLETE, "notify_url 必须以 https:// 开头");
+        }
+
+        validatePathExists(privateKeyPath, "private_key_path");
+        validatePathExists(publicKeyPath, "public_key_path");
+
+        configData.put("appid", appid);
+        configData.put("mchid", mchid);
+        configData.put("api_v3_key", apiV3Key);
+        configData.put("serial_no", serialNo);
+        configData.put("public_key_id", publicKeyId);
+        configData.put("private_key_path", privateKeyPath);
+        configData.put("public_key_path", publicKeyPath);
+        configData.put("notify_url", notifyUrl);
+        channel.setConfigData(serializeConfigData(configData));
+    }
+
+    private String requireConfigValue(Map<String, Object> configData, String key) {
+        Object value = configData.get(key);
+        if (value == null || value.toString().isBlank()) {
+            throw new BusinessException(ErrorCode.PAYMENT_CONFIG_INCOMPLETE, "微信支付缺少必填配置项: " + key);
+        }
+        return value.toString().trim();
+    }
+
+    private void validatePathExists(String path, String fieldName) {
+        try {
+            if (!Files.exists(Path.of(path))) {
+                throw new BusinessException(ErrorCode.PAYMENT_CONFIG_INCOMPLETE,
+                        "微信支付证书路径不存在: " + fieldName);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.PAYMENT_CONFIG_INCOMPLETE,
+                    "微信支付证书路径非法: " + fieldName);
+        }
     }
 
     /** 需要在 API 响应中脱敏的敏感字段名 */

@@ -23,6 +23,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     Optional<Order> findByEpayTradeNo(String epayTradeNo);
 
+    Optional<Order> findByWxOutTradeNo(String wxOutTradeNo);
+
     Optional<Order> findByUsdtTxId(String usdtTxId);
 
     Page<Order> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
@@ -35,6 +37,20 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT o FROM Order o WHERE o.status = com.orionkey.constant.OrderStatus.PENDING AND o.expiresAt < :now")
     List<Order> findExpiredOrders(@Param("now") LocalDateTime now);
+
+    @Query("SELECT o FROM Order o WHERE o.paymentMethod = :paymentMethod AND o.wxOutTradeNo IS NOT NULL " +
+            "AND o.status = com.orionkey.constant.OrderStatus.PENDING AND o.expiresAt < :now ORDER BY o.createdAt ASC")
+    List<Order> findExpiredWxpayOrders(@Param("paymentMethod") String paymentMethod, @Param("now") LocalDateTime now);
+
+    @Query("SELECT o FROM Order o WHERE o.paymentMethod = :paymentMethod AND o.wxOutTradeNo IS NOT NULL " +
+            "AND o.status = com.orionkey.constant.OrderStatus.PENDING AND o.createdAt <= :cutoff AND o.expiresAt >= :now ORDER BY o.createdAt ASC")
+    List<Order> findPendingWxpayOrdersForReconcile(@Param("paymentMethod") String paymentMethod,
+                                                   @Param("cutoff") LocalDateTime cutoff,
+                                                   @Param("now") LocalDateTime now);
+
+    @Query("SELECT o FROM Order o WHERE o.paymentMethod = :paymentMethod AND o.wxRefundNo IS NOT NULL " +
+            "AND o.refundedAt IS NULL ORDER BY o.updatedAt ASC")
+    List<Order> findPendingWxpayRefundOrders(@Param("paymentMethod") String paymentMethod);
 
     long countByUserIdAndStatus(UUID userId, OrderStatus status);
 

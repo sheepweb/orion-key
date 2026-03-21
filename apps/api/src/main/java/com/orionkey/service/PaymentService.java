@@ -1,5 +1,6 @@
 package com.orionkey.service;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -21,4 +22,16 @@ public interface PaymentService {
      * @param requestUserId 当前请求用户的 ID（可为 null，表示未登录/游客）
      */
     Map<String, Object> repay(UUID orderId, String device, UUID requestUserId);
+
+    Map<String, Object> queryWxpayOrder(UUID orderId);
+
+    void closeWxpayOrder(UUID orderId);
+
+    Map<String, Object> refundWxpayOrder(UUID orderId, BigDecimal refundAmount, String reason);
+
+    Map<String, Object> queryWxpayRefund(UUID orderId);
+
+    void reconcilePendingWxpayOrders();
+
+    void closeExpiredWxpayOrders();
 }

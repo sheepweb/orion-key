@@ -67,6 +67,16 @@ public class Order extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String qrcodeUrl;
 
+    @Column(unique = true)
+    private String wxOutTradeNo;
+
+    private String wxRefundNo;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal refundAmount;
+
+    private LocalDateTime refundedAt;
+
     private String epayTradeNo;
 
     // ── USDT 支付字段 ──
