@@ -213,8 +213,9 @@ public class PaymentServiceImpl implements PaymentService {
     private void createWxpayPayment(PaymentChannel channel, Order order, BigDecimal amount) {
         WxpayConfig config = buildWxpayConfig(channel);
         String productName = buildProductName(order.getId());
+        String outTradeNo = order.getId().toString().replace("-", "");
         NativePaymentResult result = wechatPayService.createNativePayment(
-                config, order.getId().toString(), productName, amount);
+                config, outTradeNo, productName, amount);
         order.setQrcodeUrl(result.codeUrl());
         order.setPaymentUrl(result.codeUrl());
         orderRepository.save(order);
