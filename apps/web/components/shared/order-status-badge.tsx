@@ -23,16 +23,21 @@ const statusKeys: Record<OrderStatus, TranslationKey> = {
   EXPIRED: "status.EXPIRED",
 }
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+const fallbackStyle = "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+
+export function OrderStatusBadge({ status }: { status: OrderStatus | string | null | undefined }) {
   const { t } = useLocale()
+  const normalizedStatus = typeof status === "string" ? status.trim() : ""
+  const hasKnownStatus = normalizedStatus in statusKeys
+
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        statusStyles[status]
+        hasKnownStatus ? statusStyles[normalizedStatus as OrderStatus] : fallbackStyle
       )}
     >
-      {t(statusKeys[status])}
+      {hasKnownStatus ? t(statusKeys[normalizedStatus as OrderStatus]) : (normalizedStatus || "未知状态")}
     </span>
   )
 }

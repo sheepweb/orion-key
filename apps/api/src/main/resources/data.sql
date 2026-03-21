@@ -218,4 +218,17 @@ SELECT gen_random_uuid(), 'b0000000-0000-0000-0000-000000000006'::uuid, 'SPOTIFY
 FROM generate_series(1, 3) AS i
 WHERE NOT EXISTS (SELECT 1 FROM card_keys WHERE content = 'SPOTIFY-TEST-1' AND product_id = 'b0000000-0000-0000-0000-000000000006'::uuid);
 
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+
+ALTER TABLE orders
+ADD CONSTRAINT orders_status_check
+CHECK (status IN (
+    'PENDING',
+    'PAID',
+    'DELIVERED',
+    'REFUNDING',
+    'REFUNDED',
+    'EXPIRED'
+));
+
 commit;
