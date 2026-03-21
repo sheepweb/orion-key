@@ -16,6 +16,7 @@ import com.wechat.pay.java.service.refund.model.AmountReq;
 import com.wechat.pay.java.service.refund.model.CreateRequest;
 import com.wechat.pay.java.service.refund.model.QueryByOutRefundNoRequest;
 import com.wechat.pay.java.service.refund.model.Refund;
+import com.wechat.pay.java.service.refund.model.RefundNotification;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -109,6 +110,32 @@ public class WechatPayServiceImpl implements WechatPayService {
             return parser.parse(requestParam, Transaction.class);
         } catch (Exception e) {
             log.error("Wxpay parseTransaction failed: mchid={}, appid={}, serialNo={}, publicKeyId={}, bodyLength={}, headersPresent={}",
+                    config.mchid(),
+                    config.appid(),
+                    config.serialNo(),
+                    config.publicKeyId(),
+                    body == null ? 0 : body.length(),
+                    summarizeHeaders(headers),
+                    e);
+            throw e;
+        }
+    }
+
+    @Override
+    public RefundNotification parseRefundNotification(WxpayConfig config, Map<String, String> headers, String body) {
+        NotificationParser parser = new NotificationParser(buildConfig(config));
+        RequestParam requestParam = new RequestParam.Builder()
+                .serialNumber(resolveHeader(headers, "Wechatpay-Serial"))
+                .nonce(resolveHeader(headers, "Wechatpay-Nonce"))
+                .signature(resolveHeader(headers, "Wechatpay-Signature"))
+                .timestamp(resolveHeader(headers, "Wechatpay-Timestamp"))
+                .signType(resolveHeader(headers, "Wechatpay-Signature-Type"))
+                .body(body)
+                .build();
+        try {
+            return parser.parse(requestParam, RefundNotification.class);
+        } catch (Exception e) {
+            log.error("Wxpay parseRefundNotification failed: mchid={}, appid={}, serialNo={}, publicKeyId={}, bodyLength={}, headersPresent={}",
                     config.mchid(),
                     config.appid(),
                     config.serialNo(),

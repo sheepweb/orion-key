@@ -25,6 +25,11 @@ public interface WebhookService {
     String processWxpayCallback(Map<String, String> headers, String body);
 
     /**
+     * 处理微信退款回调（原始 body + 签名头）
+     */
+    String processWxpayRefundCallback(Map<String, String> headers, String body);
+
+    /**
      * 处理 BEpusdt USDT 支付回调（JSON body，含非 String 类型字段如 amount/status）
      */
     String processBepusdtCallback(Map<String, Object> params);

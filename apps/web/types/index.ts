@@ -147,7 +147,7 @@ export interface Cart {
 // Order
 // ============================================================
 
-export type OrderStatus = 'PENDING' | 'PAID' | 'DELIVERED' | 'EXPIRED'
+export type OrderStatus = 'PENDING' | 'PAID' | 'DELIVERED' | 'REFUNDING' | 'REFUNDED' | 'EXPIRED'
 
 export type OrderType = 'DIRECT' | 'CART'
 

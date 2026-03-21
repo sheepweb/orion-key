@@ -70,6 +70,26 @@ public class PaymentWebhookController {
     }
 
     /**
+     * 微信退款回调。
+     */
+    @PostMapping(value = "/wxpay/refund", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> handleWxpayRefundCallback(
+            @RequestHeader Map<String, String> headers,
+            @RequestBody String body) {
+        try {
+            String result = webhookService.processWxpayRefundCallback(headers, body);
+            return ResponseEntity.ok(Map.of("code", result, "message", "成功"));
+        } catch (ValidationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("code", "FAIL", "message", "签名验证失败"));
+        } catch (Exception e) {
+            log.error("Wxpay refund callback handling failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", "FAIL", "message", "处理失败"));
+        }
+    }
+
+    /**
      * BEpusdt USDT 支付回调 — POST JSON，返回 "ok" 表示成功
      */
     @PostMapping(value = "/usdt", produces = MediaType.TEXT_PLAIN_VALUE)

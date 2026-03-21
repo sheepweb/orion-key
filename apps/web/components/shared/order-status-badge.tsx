@@ -9,6 +9,8 @@ const statusStyles: Record<OrderStatus, string> = {
   PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   PAID: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
   DELIVERED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+  REFUNDING: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  REFUNDED: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
   EXPIRED: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 }
 
@@ -16,6 +18,8 @@ const statusKeys: Record<OrderStatus, TranslationKey> = {
   PENDING: "status.PENDING",
   PAID: "status.PAID",
   DELIVERED: "status.DELIVERED",
+  REFUNDING: "status.REFUNDING",
+  REFUNDED: "status.REFUNDED",
   EXPIRED: "status.EXPIRED",
 }
 

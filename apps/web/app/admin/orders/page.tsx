@@ -429,7 +429,7 @@ export default function AdminOrdersPage() {
       {/* Detail Modal */}
       <Modal open={showDetail !== null} onClose={() => setShowDetail(null)} className="max-w-lg">
         {showDetail && (
-          <>
+          <div className="flex max-h-[85vh] min-h-0 flex-col">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">{t("admin.orderDetail")}</h2>
@@ -443,7 +443,8 @@ export default function AdminOrdersPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex flex-col gap-5 p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-5 p-6">
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">商品名称</span>
@@ -595,25 +596,28 @@ export default function AdminOrdersPage() {
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
-              {showDetail.status === "PENDING" && (
+          </div>
+            <div className="shrink-0 border-t border-border bg-card px-6 py-4">
+              <div className="flex justify-end gap-3">
+                {showDetail.status === "PENDING" && (
+                  <button
+                    type="button"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+                    onClick={() => handleMarkPaid(showDetail.id)}
+                  >
+                    {t("admin.markPaid")}
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-                  onClick={() => handleMarkPaid(showDetail.id)}
+                  className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  onClick={() => setShowDetail(null)}
                 >
-                  {t("admin.markPaid")}
+                  {t("common.close")}
                 </button>
-              )}
-              <button
-                type="button"
-                className="rounded-lg border border-input bg-transparent px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-                onClick={() => setShowDetail(null)}
-              >
-                {t("common.close")}
-              </button>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </Modal>
     </div>

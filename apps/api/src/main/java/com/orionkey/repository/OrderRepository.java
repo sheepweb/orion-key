@@ -25,6 +25,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     Optional<Order> findByWxOutTradeNo(String wxOutTradeNo);
 
+    Optional<Order> findByWxRefundNo(String wxRefundNo);
+
     Optional<Order> findByUsdtTxId(String usdtTxId);
 
     Page<Order> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);

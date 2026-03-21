@@ -1,7 +1,7 @@
 package com.orionkey.service;
 
 import com.wechat.pay.java.service.payments.model.Transaction;
-import com.wechat.pay.java.service.refund.model.Refund;
+import com.wechat.pay.java.service.refund.model.RefundNotification;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -51,5 +51,7 @@ public interface WechatPayService {
     RefundResult queryRefundByOutRefundNo(WxpayConfig config, String outRefundNo);
 
     Transaction parseTransaction(WxpayConfig config, Map<String, String> headers, String body);
+
+    RefundNotification parseRefundNotification(WxpayConfig config, Map<String, String> headers, String body);
 }
 

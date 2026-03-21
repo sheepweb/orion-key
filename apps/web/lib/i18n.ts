@@ -250,6 +250,7 @@ const zh = {
   "status.PENDING": "待支付",
   "status.PAID": "已支付",
   "status.DELIVERED": "已发货",
+  "status.REFUNDING": "退款中",
   "status.EXPIRED": "已过期",
   "status.REFUNDED": "已退款",
 

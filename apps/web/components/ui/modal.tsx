@@ -47,7 +47,7 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
       <div className="flex min-h-full items-center justify-center p-4" data-backdrop="true">
         <div
           className={cn(
-            "w-full rounded-xl border border-border bg-card shadow-xl",
+            "flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl",
             className
           )}
         >

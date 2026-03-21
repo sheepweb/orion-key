@@ -18,6 +18,7 @@ import com.orionkey.service.WechatPayService;
 import com.orionkey.service.WebhookService;
 import com.wechat.pay.java.core.exception.ValidationException;
 import com.wechat.pay.java.service.payments.model.Transaction;
+import com.wechat.pay.java.service.refund.model.RefundNotification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -464,6 +465,88 @@ public class WebhookServiceImpl implements WebhookService {
             orderRepository.save(order);
             saveWebhookEvent(eventId, "wxpay", order.getId(), body, "SKIPPED_" + order.getStatus().name());
         }
+        return "SUCCESS";
+    }
+
+    @Override
+    @Transactional
+    public String processWxpayRefundCallback(Map<String, String> headers, String body) {
+        RefundNotification notification;
+        try {
+            PaymentChannel channel = resolveWxpayChannel();
+            WechatPayService.WxpayConfig config = paymentService.buildWxpayConfig(channel);
+            notification = wechatPayService.parseRefundNotification(config, headers, body);
+        } catch (ValidationException e) {
+            log.error("Wxpay refund callback sign verification failed", e);
+            throw e;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Wxpay refund callback parse failed", e);
+            throw new BusinessException(ErrorCode.CHANNEL_UNAVAILABLE, "微信退款回调解析失败");
+        }
+
+        String outRefundNo = notification.getOutRefundNo();
+        String refundId = notification.getRefundId();
+        String eventId = "wxpay_refund_" + (refundId != null && !refundId.isBlank()
+                ? refundId
+                : (outRefundNo != null && !outRefundNo.isBlank() ? outRefundNo : UUID.randomUUID()));
+        if (webhookEventRepository.findByEventId(eventId).isPresent()) {
+            log.info("Wxpay refund callback already processed: {}", eventId);
+            return "SUCCESS";
+        }
+
+        if (outRefundNo == null || outRefundNo.isBlank()) {
+            saveWebhookEvent(eventId, "wxpay_refund", null, body, "MISSING_OUT_REFUND_NO");
+            return "FAIL";
+        }
+
+        Order order = orderRepository.findByWxRefundNo(outRefundNo).orElse(null);
+        if (order == null) {
+            saveWebhookEvent(eventId, "wxpay_refund", null, body, "ORDER_NOT_FOUND");
+            return "FAIL";
+        }
+
+        if (notification.getAmount() != null && notification.getAmount().getRefund() != null) {
+            order.setRefundAmount(BigDecimal.valueOf(notification.getAmount().getRefund(), 2));
+        }
+
+        if (notification.getRefundStatus() != null) {
+            switch (notification.getRefundStatus()) {
+                case SUCCESS -> {
+                    order.setStatus(OrderStatus.REFUNDED);
+                    if (order.getRefundedAt() == null) {
+                        order.setRefundedAt(LocalDateTime.now());
+                    }
+                    orderRepository.save(order);
+                    saveWebhookEvent(eventId, "wxpay_refund", order.getId(), body, "SUCCESS");
+                    return "SUCCESS";
+                }
+                case PROCESSING -> {
+                    if (order.getStatus() != OrderStatus.REFUNDED) {
+                        order.setStatus(OrderStatus.REFUNDING);
+                    }
+                    orderRepository.save(order);
+                    saveWebhookEvent(eventId, "wxpay_refund", order.getId(), body, "PROCESSING");
+                    return "SUCCESS";
+                }
+                case CLOSED, ABNORMAL -> {
+                    orderRepository.save(order);
+                    saveWebhookEvent(eventId, "wxpay_refund", order.getId(), body,
+                            notification.getRefundStatus().name());
+                    return "SUCCESS";
+                }
+                default -> {
+                    orderRepository.save(order);
+                    saveWebhookEvent(eventId, "wxpay_refund", order.getId(), body,
+                            "IGNORED_" + notification.getRefundStatus().name());
+                    return "SUCCESS";
+                }
+            }
+        }
+
+        orderRepository.save(order);
+        saveWebhookEvent(eventId, "wxpay_refund", order.getId(), body, "UNKNOWN_STATUS");
         return "SUCCESS";
     }
 

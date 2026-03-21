@@ -425,6 +425,9 @@ public class PaymentServiceImpl implements PaymentService {
         );
         order.setWxRefundNo(outRefundNo);
         order.setRefundAmount(actualRefundAmount);
+        if (order.getStatus() != com.orionkey.constant.OrderStatus.REFUNDED) {
+            order.setStatus(com.orionkey.constant.OrderStatus.REFUNDING);
+        }
         applyWxpayRefundResult(order, result);
         orderRepository.save(order);
         saveWxpayAuditEvent(order, "ADMIN_REFUND", toAuditPayload(result));
@@ -596,8 +599,16 @@ public class PaymentServiceImpl implements PaymentService {
         if (result.refundFen() != null) {
             order.setRefundAmount(BigDecimal.valueOf(result.refundFen(), 2));
         }
-        if ("SUCCESS".equals(result.status()) && order.getRefundedAt() == null) {
-            order.setRefundedAt(LocalDateTime.now());
+        if ("SUCCESS".equals(result.status())) {
+            order.setStatus(com.orionkey.constant.OrderStatus.REFUNDED);
+            if (order.getRefundedAt() == null) {
+                order.setRefundedAt(LocalDateTime.now());
+            }
+            return;
+        }
+        if (result.status() != null && !result.status().isBlank()
+                && order.getStatus() != com.orionkey.constant.OrderStatus.REFUNDED) {
+            order.setStatus(com.orionkey.constant.OrderStatus.REFUNDING);
         }
     }
 
