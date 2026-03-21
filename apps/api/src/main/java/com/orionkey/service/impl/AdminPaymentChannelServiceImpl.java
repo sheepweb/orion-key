@@ -30,8 +30,11 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
     @Override
     @Transactional
     public void createChannel(Map<String, Object> req) {
+        String channelCode = normalizeChannelCode((String) req.get("channel_code"));
+        ensureActiveChannelCodeUnique(channelCode);
+
         PaymentChannel channel = new PaymentChannel();
-        channel.setChannelCode((String) req.get("channel_code"));
+        channel.setChannelCode(channelCode);
         channel.setChannelName((String) req.get("channel_name"));
         if (req.containsKey("provider_type")) {
             channel.setProviderType((String) req.get("provider_type"));
@@ -66,6 +69,20 @@ public class AdminPaymentChannelServiceImpl implements AdminPaymentChannelServic
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "支付渠道不存在"));
         channel.setIsDeleted(1);
         paymentChannelRepository.save(channel);
+    }
+
+    private void ensureActiveChannelCodeUnique(String channelCode) {
+        if (paymentChannelRepository.existsByChannelCodeAndIsDeleted(channelCode, 0)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "支付渠道编码已存在，请修改后重试");
+        }
+    }
+
+    private String normalizeChannelCode(String channelCode) {
+        if (channelCode == null || channelCode.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "支付渠道编码不能为空");
+        }
+        return channelCode.trim();
     }
 
     /** 需要在 API 响应中脱敏的敏感字段名 */
