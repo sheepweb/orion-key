@@ -246,6 +246,7 @@ export default function AdminSiteConfigPage() {
             </button>
           </div>
         </div>
+      )}
 
       {/* SEO */}
       {tab === "seo" && (
