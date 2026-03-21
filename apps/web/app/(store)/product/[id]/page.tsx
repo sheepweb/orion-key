@@ -6,7 +6,6 @@ import { ProductActions } from "./product-actions"
 import { ProductBreadcrumb } from "./product-breadcrumb"
 import { ProductDescription } from "./product-description"
 import { ScrollToTop } from "./scroll-to-top"
-import { SeoLinkSection } from "@/components/store/seo-link-section"
 import { ProductCard } from "@/components/store/product-card"
 import { slugifyTag } from "@/lib/content-loader"
 import { buildSeoMetadata } from "@/lib/seo"
@@ -52,12 +51,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const productPath = product.slug || product.id
   const categoryPath = product.category_slug || product.category_id
-  const helpLinks = [
-    { href: "/help/payment", label: "支付说明", description: "查看支付方式、到账说明与异常处理" },
-    { href: "/help/delivery", label: "发货说明", description: "了解发货时效与未收到内容的处理建议" },
-    { href: "/help/refund", label: "售后与退款说明", description: "了解数字商品售后边界与退款判定原则" },
-    ...(categoryPath ? [{ href: `/category/${categoryPath}`, label: product.category_name || "所属分类", description: "返回该商品所属分类继续浏览相关商品" }] : []),
-  ]
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -104,7 +97,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
         </section>
       ) : null}
-      <SeoLinkSection title="购买说明与相关入口" items={helpLinks} />
       <ProductDescription product={product} />
       {relatedProducts.length > 0 ? (
         <section className="space-y-4">

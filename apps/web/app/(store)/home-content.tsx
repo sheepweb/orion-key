@@ -9,7 +9,6 @@ import {
   ClipboardList,
   ShieldCheck,
 } from "lucide-react"
-import { SeoLinkSection } from "@/components/store/seo-link-section"
 import { useLocale, useSearch, useSiteConfig } from "@/lib/context"
 import { ProductCard } from "@/components/store/product-card"
 import { cn } from "@/lib/utils"
@@ -60,14 +59,6 @@ export function HomeContent({ products, categories, siteSlogan, siteDescription 
     return result
   }, [products, selectedCategory, searchQuery, sortBy, inStockOnly, priceMin, priceMax])
 
-  const categoryLinks = categories.slice(0, 6).map((cat) => ({ href: `/category/${cat.slug || cat.id}`, label: cat.name, description: `浏览 ${cat.name} 分类商品` }))
-  const helpLinks = [
-    { href: "/help", label: "帮助中心", description: "查看支付、发货、售后与购买指南" },
-    { href: "/help/faq", label: "常见问题", description: "快速查看下单、支付与售后常见问题" },
-    { href: "/help/payment", label: "支付说明", description: "了解当前支持的支付方式与支付异常处理" },
-    { href: "/topics", label: "购买与售后专题", description: "查看购买前检查清单与发货售后避坑指南" },
-  ]
-
   return (
     <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1600px] flex flex-col gap-6">
       <section className="relative overflow-hidden rounded-xl border border-border/60 bg-card px-5 py-5 sm:px-8 sm:py-6">
@@ -88,9 +79,6 @@ export function HomeContent({ products, categories, siteSlogan, siteDescription 
           )}
         </div>
       </section>
-
-      <SeoLinkSection title="快速浏览分类" items={categoryLinks} />
-      <SeoLinkSection title="购买帮助入口" items={helpLinks} />
 
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-center gap-5 py-3 sm:gap-7">
