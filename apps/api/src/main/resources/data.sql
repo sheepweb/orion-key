@@ -114,7 +114,7 @@ WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'device_rate_lim
 
 -- 设备指纹限流：下单频率上限（次/小时/设备）
 INSERT INTO site_configs (id, config_key, config_value, config_group, created_at, updated_at)
-SELECT gen_random_uuid(), 'device_order_limit_per_hour', '15', 'risk', NOW(), NOW()
+SELECT gen_random_uuid(), 'device_order_limit_per_hour', '10', 'risk', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'device_order_limit_per_hour');
 
 -- 设备指纹限流：TXID 提交上限（次/小时/设备）
@@ -129,7 +129,7 @@ WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'txid_submit_lim
 
 -- 设备指纹限流：查询频率上限（次/小时/设备）
 INSERT INTO site_configs (id, config_key, config_value, config_group, created_at, updated_at)
-SELECT gen_random_uuid(), 'device_query_limit_per_hour', '50', 'risk', NOW(), NOW()
+SELECT gen_random_uuid(), 'device_query_limit_per_hour', '20', 'risk', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'device_query_limit_per_hour');
 
 -- 设备指纹限流：登录频率上限（次/小时/设备）
@@ -139,7 +139,7 @@ WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'device_login_li
 
 -- 设备指纹限流：注册频率上限（次/小时/设备）
 INSERT INTO site_configs (id, config_key, config_value, config_group, created_at, updated_at)
-SELECT gen_random_uuid(), 'device_register_limit_per_hour', '10', 'risk', NOW(), NOW()
+SELECT gen_random_uuid(), 'device_register_limit_per_hour', '5', 'risk', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM site_configs WHERE config_key = 'device_register_limit_per_hour');
 
 -- ────────────────────────────────────────
