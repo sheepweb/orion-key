@@ -14,20 +14,20 @@ export default function AdminRiskPage() {
   const { t } = useLocale()
   const [tab, setTab] = useState<"config" | "flagged">("config")
   const [config, setConfig] = useState<RiskConfig>({
-    turnstile_enabled: true,
-    device_rate_limit_enabled: true,
-    device_order_limit_per_hour: 10,
+    turnstile_enabled: false,
+    device_rate_limit_enabled: false,
+    device_order_limit_per_hour: 15,
     device_txid_limit_per_hour: 5,
     txid_submit_limit_per_order: 3,
-    device_query_limit_per_hour: 20,
+    device_query_limit_per_hour: 50,
     device_login_limit_per_hour: 10,
-    device_register_limit_per_hour: 5,
-    rate_limit_per_second: 10,
+    device_register_limit_per_hour: 10,
+    rate_limit_per_second: 25,
     login_attempt_limit: 5,
-    max_purchase_per_user: 10,
+    max_purchase_per_user: 50,
     order_expire_minutes: 15,
-    max_pending_orders_per_ip: 3,
-    max_pending_orders_per_user: 3,
+    max_pending_orders_per_ip: 5,
+    max_pending_orders_per_user: 5,
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
