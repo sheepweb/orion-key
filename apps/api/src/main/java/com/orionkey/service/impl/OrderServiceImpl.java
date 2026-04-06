@@ -335,30 +335,25 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void checkPendingOrderLimits(UUID userId, String clientIp, String email) {
-<<<<<<< HEAD
-        int maxPerUser = siteConfigService.getConfigInt("max_pending_orders_per_user", 5);
-        int maxPerIp = siteConfigService.getConfigInt("max_pending_orders_per_ip", 10);
-=======
-        // 邮箱和 IP 共用同一配置值（面板"最大待支付订单数"）
-        int maxPending = getConfigInt("max_pending_orders_per_user", 5);
->>>>>>> 4386800 (feat: 风控参数完善)
+        int maxPerUser = getConfigInt("max_pending_orders_per_user", 5);
+        int maxPerIp = getConfigInt("max_pending_orders_per_ip", 10);
 
         if (userId != null) {
             long pending = orderRepository.countByUserIdAndStatus(userId, OrderStatus.PENDING);
-            if (pending >= maxPending) {
+            if (pending >= maxPerUser) {
                 throw new BusinessException(ErrorCode.UNPAID_ORDER_EXISTS, "您有未支付的订单，请先完成支付或等待过期");
             }
         }
         if (clientIp != null) {
             long pending = orderRepository.countByClientIpAndStatus(clientIp, OrderStatus.PENDING);
-            if (pending >= maxPending) {
+            if (pending >= maxPerIp) {
                 throw new BusinessException(ErrorCode.UNPAID_ORDER_EXISTS, "您有未支付的订单，请先完成支付或等待过期");
             }
         }
         // F14: 邮箱维度 pending 订单限制 — 防止通过 IP 轮换绕过限制
         if (email != null && !email.isBlank()) {
             long pending = orderRepository.countByEmailAndStatus(email, OrderStatus.PENDING);
-            if (pending >= maxPending) {
+            if (pending >= maxPerUser) {
                 throw new BusinessException(ErrorCode.UNPAID_ORDER_EXISTS, "该邮箱有未支付的订单，请先完成支付或等待过期");
             }
         }

@@ -782,18 +782,14 @@ export default function AdminProductsPage() {
                         <button
                           type="button"
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-<<<<<<< HEAD
-                          onClick={() => setFormSpecs((prev) => prev.filter((_, i) => i !== idx))}
-=======
                           onClick={() => {
                             const s = formSpecs[idx]
                             if (s.id && s.card_key_count && s.card_key_count > 0) {
                               setSpecDeleteConfirm({ idx, name: s.name, count: s.card_key_count })
                             } else {
-                              setFormSpecs(prev => prev.filter((_, i) => i !== idx))
+                              setFormSpecs((prev) => prev.filter((_, i) => i !== idx))
                             }
                           }}
->>>>>>> fbba0f0 (feat: 多规格功能完整修复——停用保留规格和卡密，新增安全校验)
                         >
                           <X className="h-4 w-4" />
                         </button>
