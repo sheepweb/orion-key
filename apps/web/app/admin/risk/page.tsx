@@ -134,6 +134,7 @@ export default function AdminRiskPage() {
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-4 font-semibold text-foreground">人机验证 (Cloudflare Turnstile)</h3>
             <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
                 <div>
                   <label className="text-sm font-medium text-foreground">启用 Turnstile</label>
                   <p className="text-xs text-muted-foreground">关闭后所有接口跳过人机验证，仅建议调试时关闭</p>
