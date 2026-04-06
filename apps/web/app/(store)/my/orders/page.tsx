@@ -11,7 +11,7 @@ import { mockOrderList } from "@/lib/mock-data"
 import { OrderStatusBadge } from "@/components/shared/order-status-badge"
 import type { OrderBrief, OrderStatus } from "@/types"
 import type { TranslationKey } from "@/lib/i18n"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 
 const STATUS_FILTERS: (OrderStatus | "ALL")[] = ["ALL", "PENDING", "PAID", "DELIVERED", "EXPIRED"]
 
@@ -111,7 +111,7 @@ export default function MyOrdersPage() {
                   <OrderStatusBadge status={order.status} />
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(order.created_at).toLocaleString()}
+                  {formatDateTime(order.created_at)}
                 </span>
               </div>
 

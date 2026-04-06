@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Search, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
 import { adminLogApi, withMockFallback } from "@/services/api"
 import { mockOperationLogList } from "@/lib/mock-data"
@@ -130,7 +130,7 @@ export default function AdminOperationLogsPage() {
                   return (
                     <tr key={log.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(log.created_at).toLocaleString()}
+                        {formatDateTime(log.created_at)}
                       </td>
                       <td className="px-4 py-3 font-medium text-foreground">{log.username}</td>
                       <td className="px-4 py-3">

@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { cn, stripInvisible } from "@/lib/utils"
+import { cn, formatDateTime, stripInvisible } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
 import { toast } from "sonner"
 import { adminCardKeyApi, adminProductApi, withMockFallback } from "@/services/api"
@@ -457,7 +457,7 @@ export default function AdminCardKeysPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(batch.created_at).toLocaleString()}
+                      {formatDateTime(batch.created_at)}
                     </td>
                   </tr>
                 ))}
@@ -611,13 +611,13 @@ export default function AdminCardKeysPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(key.created_at).toLocaleString()}
+                        {formatDateTime(key.created_at)}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">
                         {key.order_id ? key.order_id.slice(0, 8) + "..." : "-"}
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                        {key.sold_at ? new Date(key.sold_at).toLocaleString() : "-"}
+                        {key.sold_at ? formatDateTime(key.sold_at) : "-"}
                       </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         {(key.status === "AVAILABLE" || key.status === "LOCKED") && (

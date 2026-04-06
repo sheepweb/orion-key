@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ChevronDown, ChevronLeft, ChevronRight, Eye, CheckCircle, XCircle, X, ExternalLink } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
 import { toast } from "sonner"
 import { adminTxidReviewApi, withMockFallback } from "@/services/api"
@@ -248,7 +248,7 @@ export default function AdminTxidReviewsPage() {
                       </td>
                       <td className="px-4 py-3">{statusBadge(record.status)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(record.submitted_at || record.created_at).toLocaleString()}
+                        {formatDateTime(record.submitted_at || record.created_at)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
@@ -437,13 +437,13 @@ export default function AdminTxidReviewsPage() {
                   <div className="flex flex-col gap-1">
                     <span className="text-xs text-muted-foreground">提交时间</span>
                     <span className="text-sm text-foreground">
-                      {new Date(showDetail.submitted_at || showDetail.created_at).toLocaleString()}
+                      {formatDateTime(showDetail.submitted_at || showDetail.created_at)}
                     </span>
                   </div>
                   {showDetail.reviewed_at && (
                     <div className="flex flex-col gap-1">
                       <span className="text-xs text-muted-foreground">审核时间</span>
-                      <span className="text-sm text-foreground">{new Date(showDetail.reviewed_at).toLocaleString()}</span>
+                      <span className="text-sm text-foreground">{formatDateTime(showDetail.reviewed_at)}</span>
                     </div>
                   )}
                 </div>

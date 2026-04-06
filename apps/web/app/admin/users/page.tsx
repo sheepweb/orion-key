@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Search, UserCheck, UserX, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
 import { toast } from "sonner"
 import { adminUserApi, withMockFallback } from "@/services/api"
@@ -145,7 +145,7 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {formatDate(user.created_at)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end">

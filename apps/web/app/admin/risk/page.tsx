@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Save, ShieldAlert, ShieldCheck, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 import { useLocale } from "@/lib/context"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { toast } from "sonner"
 import { adminRiskApi, withMockFallback } from "@/services/api"
 import { mockAdminOrderList } from "@/lib/mock-data"
@@ -311,7 +311,7 @@ export default function AdminRiskPage() {
                         <OrderStatusBadge status={order.status} />
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleString()}
+                        {formatDateTime(order.created_at)}
                       </td>
                       <td className="px-4 py-3">
                         <button

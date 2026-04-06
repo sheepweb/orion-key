@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+const SHANGHAI_TIME_ZONE = "Asia/Shanghai"
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -69,18 +71,82 @@ export function stripInvisible(text: string): string {
   return text.replace(/[\u200B-\u200F\u2060\uFEFF]/g, '')
 }
 
-export function formatDateTime(iso: string, locale?: string): string {
+function resolveLocale(locale?: string): string {
+  return locale === "en" ? "en-US" : "zh-CN"
+}
+
+function parseShanghaiDateInput(value: string): Date | null {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/)
+  if (!match) {
+    return null
+  }
+
+  const [, year, month, day, hour = "00", minute = "00", second = "00"] = match
+  return new Date(Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour) - 8,
+    Number(minute),
+    Number(second)
+  ))
+}
+
+function normalizeDateInput(value: string | number | Date): Date {
+  if (typeof value === "string") {
+    const parsed = parseShanghaiDateInput(value)
+    if (parsed) {
+      return parsed
+    }
+  }
+
+  return value instanceof Date ? value : new Date(value)
+}
+
+export function formatDateTime(value?: string | number | Date | null, locale?: string): string {
+  if (!value) {
+    return "-"
+  }
+
   try {
-    const date = new Date(iso)
-    return date.toLocaleString(locale === "en" ? "en-US" : "zh-CN", {
+    const date = normalizeDateInput(value)
+    if (Number.isNaN(date.getTime())) {
+      return String(value)
+    }
+
+    return date.toLocaleString(resolveLocale(locale), {
+      timeZone: SHANGHAI_TIME_ZONE,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      hour12: false,
     })
   } catch {
-    return iso
+    return String(value)
+  }
+}
+
+export function formatDate(value?: string | number | Date | null, locale?: string): string {
+  if (!value) {
+    return "-"
+  }
+
+  try {
+    const date = normalizeDateInput(value)
+    if (Number.isNaN(date.getTime())) {
+      return String(value)
+    }
+
+    return date.toLocaleDateString(resolveLocale(locale), {
+      timeZone: SHANGHAI_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+  } catch {
+    return String(value)
   }
 }

@@ -3,6 +3,8 @@
 import { OrderStatusBadge } from "@/components/shared/order-status-badge"
 import { useLocale } from "@/lib/context"
 import { toast } from "sonner"
+import { formatDateTime } from "@/lib/utils"
+
 import type { AdminOrderItem } from "@/types"
 
 export function RecentOrders({ orders }: { orders: AdminOrderItem[] }) {
@@ -83,7 +85,7 @@ export function RecentOrders({ orders }: { orders: AdminOrderItem[] }) {
                   <OrderStatusBadge status={order.status} />
                 </td>
                 <td className="py-3 text-muted-foreground">
-                  {new Date(order.created_at).toLocaleString()}
+                  {formatDateTime(order.created_at)}
                 </td>
               </tr>
             ))}

@@ -10,7 +10,7 @@ import { useRequireAuth } from "@/lib/hooks"
 import { userApi, withMockFallback, getApiErrorMessage } from "@/services/api"
 import { mockPointsData } from "@/lib/mock-data"
 import type { PointRecord } from "@/types"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 
 type Tab = "info" | "password" | "points"
 
@@ -259,7 +259,7 @@ function PointsHistory() {
             <div>
               <p className="text-sm text-card-foreground">{record.reason}</p>
               <p className="text-xs text-muted-foreground">
-                {new Date(record.created_at).toLocaleString()}
+                {formatDateTime(record.created_at)}
               </p>
             </div>
             <div className="text-right">

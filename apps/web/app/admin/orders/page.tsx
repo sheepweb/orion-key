@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Search, ChevronDown, Eye, Download, ChevronLeft, ChevronRight, X, CheckCircle } from "lucide-react"
-import { cn, stripInvisible } from "@/lib/utils"
+import { cn, formatDateTime as formatShanghaiDateTime, stripInvisible } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
 import { toast } from "sonner"
 import { adminOrderApi, adminCardKeyApi, withMockFallback } from "@/services/api"
@@ -56,7 +56,7 @@ export default function AdminOrdersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [markPaidConfirm, setMarkPaidConfirm] = useState<string | null>(null)
 
-  const formatDateTime = (value?: string | null) => value ? new Date(value).toLocaleString() : "-"
+  const formatDateTime = (value?: string | null) => formatShanghaiDateTime(value)
   const isWechatOrder = (order?: AdminOrderItem | null) => order?.payment_method === "wechat"
 
   const fetchOrders = async () => {
@@ -379,7 +379,7 @@ export default function AdminOrdersPage() {
                       <OrderStatusBadge status={order.status} />
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                      {new Date(order.created_at).toLocaleString()}
+                      {formatDateTime(order.created_at)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
@@ -515,7 +515,7 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">创建时间</span>
-                  <span className="text-sm text-foreground">{new Date(showDetail.created_at).toLocaleString()}</span>
+                  <span className="text-sm text-foreground">{formatDateTime(showDetail.created_at)}</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">支付时间</span>

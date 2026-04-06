@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, X, AlertCircle, ChevronDown, Shield, Key } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { useLocale } from "@/lib/context"
 import { toast } from "sonner"
 import { adminPaymentApi, withMockFallback } from "@/services/api"
@@ -499,7 +499,7 @@ export default function AdminPaymentChannelsPage() {
                 <div>
                   <span className="text-xs text-muted-foreground">{t("admin.createdAt")}</span>
                   <p className="text-sm font-medium text-foreground">
-                    {new Date(channel.created_at).toLocaleDateString()}
+                    {formatDate(channel.created_at)}
                   </p>
                 </div>
                 <div>

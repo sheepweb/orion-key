@@ -12,7 +12,7 @@ import { mockQueryOrders, mockDeliver } from "@/lib/mock-data"
 import { OrderStatusBadge } from "@/components/shared/order-status-badge"
 import { PaymentIcon, getPaymentLabel } from "@/components/shared/payment-icon"
 import type { OrderBrief, DeliverResult, TxidVerifyResult } from "@/types"
-import { cn, stripInvisible } from "@/lib/utils"
+import { cn, formatDateTime, stripInvisible } from "@/lib/utils"
 import { Modal } from "@/components/ui/modal"
 
 interface RecentQuery {
@@ -345,7 +345,7 @@ export default function OrderQueryPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("order.createdAt")}</span>
                 <span className="text-foreground">
-                  {new Date(order.created_at).toLocaleString()}
+                  {formatDateTime(order.created_at)}
                 </span>
               </div>
               {/* USDT 交易哈希（已支付/已发货时显示） */}
